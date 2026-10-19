@@ -1,30 +1,25 @@
-# Teldrive v2.0.0-drive-es.7
+# Teldrive v2.0.0-drive-es.10
 
-[GitLab](https://gitlab.com/ridrogo/teldrive/-/releases/v2.0.0-drive-es.7) · [GitHub](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.7).
+# Teldrive v2.0.0-drive-es.10
 
-Actualización de los seis CLI y Windows Desktop **2.0.0.7** para generar enlaces públicos con tu dominio incluso al copiar desde localhost o Desktop.
+Integra las actualizaciones del original hasta `67bf180` y reúne las mejoras de bots y Desktop en una sola versión.
 
-Agrega este valor a la sección `[http]` existente de tu `config.toml`:
+- Bots identificados y ordenados por **nombre, @alias e ID**, con creación desde un gestor y recuperación de operaciones interrumpidas.
+- WebView2 usa el host de ventana nativo para evitar el error gráfico `0x8876086C` al iniciar o restaurar desde bandeja.
+- Menús de bandeja: las acciones se ejecutan al terminar el menú nativo, evitando la reentrada en WPF/WebView2; texto del icono limitado al tamaño de Windows.
+- **Pantalla completa** en vídeo web y reproductor nativo. En el nativo: botón, F/F11, doble clic y Esc, conservando la ventana anterior.
+- **Desarrollador · estadísticas** en audio/vídeo: datos de reproducción, pistas/códecs y búfer. Desktop nativo añade resolución, FPS, aceleración, tasas de bits, sincronización A/V, fotogramas perdidos y otros datos reales de mpv por IPC.
+- Telegram: cuenta real que recibe cada fragmento, nombre/@alias/ID, velocidad móvil de 2 s, bytes, solicitudes activas/total, errores, latencia y último canal/mensaje/offset. Las cifras suman las lecturas del archivo, incluidas búsquedas y otras reproducciones simultáneas; una velocidad cero puede indicar reproducción desde el búfer. Datos visibles para el propietario, sin claves/tokens/URL de reproducción.
+- Del original: provisión independiente de bots, gestión de carga y cuentas revocadas, favoritos/recientes, preferencias por cuenta, tamaños de carpetas, orden natural, búsqueda/lectores y descargas compartidas directas con autorización por cookie. Se conservan Spam, temas, diez idiomas, tareas, rclone y transmisión.
 
-```toml
-public-url = "https://drive.tudominio.com"
-```
+## Actualización
 
-Sustituye el ejemplo por tu dominio y reinicia Teldrive. En Desktop edita Configuración → Configuración avanzada y guarda. Configura Cloudflare Tunnel o el proxy por separado; el ajuste no crea DNS, HTTPS ni un túnel. Conserva `address = "127.0.0.1:8080"` si cloudflared está en el mismo equipo. En ese caso puedes configurar `trusted-proxies = ["127.0.0.1/32", "::1/128"]`.
+Cierra Desktop, conserva tu carpeta de datos y configuración, sustituye el ejecutable y vuelve a abrirlo. Las migraciones propias 8–10 se conservan; las nuevas pasan a 11–16. No regeneres claves ni repitas la migración. El paquete Windows incluye .NET, PostgreSQL, rclone, FFmpeg/FFprobe y mpv. Los CLI para Windows/Linux/macOS x64 y ARM64 necesitan PostgreSQL y FFmpeg externos. Android/iOS conservan sus clientes y usan la UI del servidor actualizado.
 
-- La dirección pública se usa al crear enlaces nuevos, desde cualquier origen de la interfaz.
-- Con el valor vacío se conserva la dirección del navegador.
-- Valida HTTP/HTTPS, puerto y formato; rechaza credenciales, subrutas, consultas y fragmentos sin revelar posibles claves en los errores.
-- Acepta también `--http-public-url` y `TELDRIVE_HTTP_PUBLIC_URL`.
-- Los tokens previos siguen funcionando con el dominio público. Los enlaces ya copiados mantienen su dirección anterior.
-- Conserva las funciones de .6: diez idiomas, modo claro móvil, audio automático, pistas/subtítulos, transmisión, tareas y montaje persistente de rclone.
+## Comprobaciones y límites
 
-**Comprobado:** suite Go completa; configuración mediante TOML/entorno/CLI; seis pruebas de copia de enlaces públicos/locales en Chromium escritorio, Android emulado y WebKit iPhone; CLI Windows x64 ejecutado; arquitecturas/metadatos/hashes de los seis binarios; arranque real de Desktop con PostgreSQL/WebView2 en datos de prueba aislados. Desktop integra el mismo servidor Windows x64 y los 22 componentes con licencias.
+Go unitario completo, vet, TypeSpec, TypeScript, lint y compilación de UI; regresiones de bots, búsqueda, preferencias, favoritos, descargas y estadísticas con API simulada. Prueba nativa de reproducción real con mpv, IPC, pausa, pantalla completa/restauración, panel de desarrollador y callbacks de bandeja. Arranque de PostgreSQL/WebView2 y actualización de una base anterior en carpetas aisladas. Los manifiestos incluyen las pruebas concretas ejecutadas y los SHA256.
 
-**Actualizar:** cierra la versión anterior y conserva config.toml, claves y carpeta de datos. No regeneres claves ni repitas la migración. En Desktop conserva `%LOCALAPPDATA%\TeldriveV2` o `TeldriveData` en modo portátil. Guarda otra vez el inicio automático si cambias la ruta.
+No se han usado bots ni credenciales reales de Telegram. El harness de integración PostgreSQL no pudo ejecutarse porque Docker no está disponible; las pruebas de autorización de estadísticas y reconciliación del esquema original se compilaron, pero necesitan ese harness para ejecutarse. Linux/macOS/ARM64 se compilan y verifican por arquitectura/metadatos, sin ejecución nativa. La prueba iPhone usa una ruta explícita al WebKit instalado. Los datos de mpv solo se muestran cuando el motor los proporciona; otros orígenes rclone mantienen los datos del reproductor sin atribuir cuentas de Telegram.
 
-Linux/macOS/ARM64 se compilaron sin ejecución nativa. No se ha configurado ni probado el dominio real del usuario. CLI requiere PostgreSQL y FFmpeg/FFprobe externos. Android/iOS conservan los clientes .2 y utilizan la UI actualizada del servidor; esta release no recompila APK o IPA.
-
-Fuentes en teldrive/ y rclone/. source-revisions.json conserva los commits originales; blobs y permisos se preservan.
-
-Corrección posterior a la release .7: los tests de iOS utilizan Debug para permitir @testable import; la app de simulador Release se compila por separado. Se conserva la release publicada.
+Las revisiones exactas de las fuentes están en source-revisions.json.

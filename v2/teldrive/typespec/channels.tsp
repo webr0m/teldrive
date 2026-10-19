@@ -22,6 +22,10 @@ model DiscoveredChannel {
   id: int64;
   name: string;
 }
+model ChannelSyncRequest {
+  /** Only these discovered broadcast channels will be registered. Existing channels are retained. */
+  channelIds: int64[];
+}
 model ChannelCreateRequest {
   /** Optional display name. Telegram may choose the final title. */
   @maxLength(120)
@@ -39,6 +43,8 @@ model BotCreateRequest {
 
 model BotSummary {
   id: int64;
+  /** Telegram display name, independently of the public username. */
+  name?: string;
   username?: string;
   enabled: boolean;
   createdAt: utcDateTime;
@@ -48,8 +54,44 @@ model BotCreateResponse {
   bots: BotSummary[];
   failedIndexes: int32[];
 
-  /** Present only when existing channels need background bot provisioning. */
+  /** First provisioning task, retained for older clients. Use jobIds for all tasks. */
   jobId?: string;
+
+  /** Each saved bot has an independent provisioning task. */
+  jobIds: string[];
+}
+
+model BotProvisionResponse {
+  jobId: string;
+}
+
+model BotBulkProvisionResponse {
+  jobIds: string[];
+}
+
+model ManagedBotCreateRequest {
+  @minValue(1) managerBotId: int64;
+  @minLength(1) @maxLength(64) name: string;
+  @minLength(5) @maxLength(32) username: string;
+}
+model ManagedBotCreateResponse {
+  bot: BotSummary;
+
+  /** True if an interrupted creation was recovered using the same username. */
+  recovered: boolean;
+
+  jobId?: string;
+}
+model BotManagerStatus {
+  id: int64;
+  username: string;
+  canManageBots: boolean;
+}
+model BotUsernameRequest {
+  @minLength(5) @maxLength(32) username: string;
+}
+model BotUsernameAvailability {
+  available: boolean;
 }
 
 @tag("Channels")
@@ -62,7 +104,7 @@ namespace Channels {
     | JsonResponse<200, CursorPage<ChannelSummary>>
     | ErrorResponse<401>;
 
-  /** List Telegram channels where the authenticated user can add administrators. */
+  /** List broadcast channels where the authenticated user can add administrators. Groups are excluded. */
   @get
   @route("/discover")
   @operationId("discoverChannels")
@@ -71,13 +113,14 @@ namespace Channels {
     | ErrorResponse<401>
     | ErrorResponse<429>;
 
-  /** Discover and upsert manageable Telegram channels without deleting missing rows. */
+  /** Register only chosen manageable broadcast channels, without deleting existing channels. */
   @post
   @route("/sync")
   @operationId("syncChannels")
-  op sync(...IdempotencyHeader):
+  op sync(...IdempotencyHeader, @body body: ChannelSyncRequest):
     | JsonResponse<200, ChannelSummary[]>
     | ErrorResponse<401>
+    | ErrorResponse<404>
     | ErrorResponse<422>
     | ErrorResponse<429>;
   @post
@@ -113,6 +156,40 @@ namespace Channels {
 @useAuth(BearerOrCookieAuth)
 namespace Bots {
   @get
+  @route("/{botId}/manager")
+  @operationId("getBotManager")
+  op manager(@path botId: int64):
+    | JsonResponse<200, BotManagerStatus>
+    | ErrorResponse<401>
+    | ErrorResponse<404>
+    | ErrorResponse<422>
+    | ErrorResponse<429>
+    | ErrorResponse<503>;
+
+  @post
+  @route("/managed/check-username")
+  @operationId("checkManagedBotUsername")
+  op checkUsername(@body body: BotUsernameRequest):
+    | JsonResponse<200, BotUsernameAvailability>
+    | ErrorResponse<401>
+    | ErrorResponse<409>
+    | ErrorResponse<422>
+    | ErrorResponse<429>
+    | ErrorResponse<503>;
+
+  @post
+  @route("/managed")
+  @operationId("createManagedBot")
+  op createManaged(...IdempotencyHeader, @body body: ManagedBotCreateRequest):
+    | JsonResponse<200, ManagedBotCreateResponse>
+    | ErrorResponse<401>
+    | ErrorResponse<404>
+    | ErrorResponse<409>
+    | ErrorResponse<422>
+    | ErrorResponse<429>
+    | ErrorResponse<503>;
+
+  @get
   @operationId("listBots")
   op list(...CursorQuery):
     | JsonResponse<200, CursorPage<BotSummary>>
@@ -126,6 +203,27 @@ namespace Bots {
     | ErrorResponse<401>
     | ErrorResponse<422>
     | ErrorResponse<429>;
+  /** Re-verify all saved bots, with one independent task per bot. */
+  @post
+  @route("/provision")
+  @operationId("provisionBots")
+  op provisionAll(...IdempotencyHeader):
+    | JsonResponse<202, BotBulkProvisionResponse>
+    | ErrorResponse<401>
+    | ErrorResponse<422>
+    | ErrorResponse<429>;
+
+  /** Re-verify a saved bot and repair its access to the user's registered channels. */
+  @post
+  @route("/{botId}/provision")
+  @operationId("provisionBot")
+  op provision(@path botId: int64, ...IdempotencyHeader):
+    | JsonResponse<202, BotProvisionResponse>
+    | ErrorResponse<401>
+    | ErrorResponse<404>
+    | ErrorResponse<422>
+    | ErrorResponse<429>;
+
   @delete
   @route("/{botId}")
   @operationId("deleteBot")

@@ -9,9 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/tgdrive/teldrive/v2/internal/cache"
 	"github.com/tgdrive/teldrive/v2/internal/db/sqlcgen"
 	"github.com/tgdrive/teldrive/v2/internal/dbtypes"
 	"github.com/tgdrive/teldrive/v2/internal/secureblob"
@@ -25,6 +27,7 @@ var (
 
 type Identity struct {
 	ID       int64
+	Name     string
 	Username string
 }
 
@@ -44,10 +47,12 @@ type ListInput struct {
 }
 
 type Service struct {
-	pool     *pgxpool.Pool
-	queries  *sqlcgen.Queries
-	cipher   *secureblob.Cipher
-	verifier Verifier
+	pool          *pgxpool.Pool
+	queries       *sqlcgen.Queries
+	cipher        *secureblob.Cipher
+	verifier      Verifier
+	managed       ManagedGateway
+	identityCache cache.Cacher
 }
 
 type pendingBotRecord struct {
@@ -148,23 +153,51 @@ func (s *Service) InsertPending(ctx context.Context, userID int64, tokens []stri
 }
 
 func (s *Service) VerifyPending(ctx context.Context, userID, botID int64) (*sqlcgen.Bot, error) {
-	return s.verifyPending(ctx, userID, botID, true)
+	return s.verifyPending(ctx, userID, botID, true, false)
 }
 
 // VerifyForProvision keeps a bot disabled until all channel invitations succeed.
 func (s *Service) VerifyForProvision(ctx context.Context, userID, botID int64) (*sqlcgen.Bot, error) {
-	return s.verifyPending(ctx, userID, botID, false)
+	return s.verifyPending(ctx, userID, botID, false, false)
 }
 
-func (s *Service) verifyPending(ctx context.Context, userID, botID int64, activate bool) (*sqlcgen.Bot, error) {
+// VerifyForReprovision also verifies enabled bots imported from a legacy database.
+func (s *Service) VerifyForReprovision(ctx context.Context, userID, botID int64) (*sqlcgen.Bot, error) {
+	return s.verifyPending(ctx, userID, botID, false, true)
+}
+
+func (s *Service) Get(ctx context.Context, userID, botID int64) (*sqlcgen.Bot, error) {
 	if userID <= 0 || botID <= 0 {
 		return nil, ErrInvalidInput
 	}
 	row, err := s.queries.GetBot(ctx, sqlcgen.GetBotParams{UserID: userID, BotID: botID})
-	if err != nil {
-		return nil, fmt.Errorf("load pending bot: %w", err)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
 	}
-	if !activate && row.Enabled {
+	if err != nil {
+		return nil, fmt.Errorf("load bot: %w", err)
+	}
+	return row, nil
+}
+
+// ListIDs includes every saved bot, without the list endpoint's pagination limit.
+func (s *Service) ListIDs(ctx context.Context, userID int64) ([]int64, error) {
+	if userID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	ids, err := s.queries.ListBotIDs(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list bot IDs: %w", err)
+	}
+	return ids, nil
+}
+
+func (s *Service) verifyPending(ctx context.Context, userID, botID int64, activate, force bool) (*sqlcgen.Bot, error) {
+	row, err := s.Get(ctx, userID, botID)
+	if err != nil {
+		return nil, err
+	}
+	if !activate && !force && row.Enabled {
 		return row, nil
 	}
 	token, err := s.cipher.Open("bot-token", row.TokenCiphertext)
@@ -178,8 +211,11 @@ func (s *Service) verifyPending(ctx context.Context, userID, botID int64, activa
 	if identity.ID != botID || strings.TrimSpace(identity.Username) == "" {
 		return nil, ErrNotBot
 	}
+	row, err = s.saveIdentity(ctx, userID, identity)
+	if err != nil {
+		return nil, err
+	}
 	if !activate {
-		row.Username = dbtypes.OptionalText(nonEmpty(identity.Username))
 		return row, nil
 	}
 	return s.Activate(ctx, userID, botID, identity.Username)
@@ -238,6 +274,7 @@ func (s *Service) List(ctx context.Context, in ListInput) ([]*sqlcgen.Bot, error
 	if err != nil {
 		return nil, fmt.Errorf("list bots: %w", err)
 	}
+	s.hydrateIdentities(ctx, in.UserID, rows)
 	return rows, nil
 }
 

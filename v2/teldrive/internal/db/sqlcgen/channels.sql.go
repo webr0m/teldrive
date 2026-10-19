@@ -21,7 +21,7 @@ SET username = $1,
     updated_at = now()
 WHERE user_id = $2
   AND bot_id = $3
-RETURNING bot_id, user_id, username, token_ciphertext, enabled, session, consecutive_failures, last_error, last_used_at, retry_after, created_at, updated_at
+RETURNING bot_id, user_id, username, token_ciphertext, enabled, session, consecutive_failures, last_error, last_used_at, retry_after, created_at, updated_at, name
 `
 
 type ActivateBotParams struct {
@@ -46,6 +46,7 @@ func (q *Queries) ActivateBot(ctx context.Context, arg ActivateBotParams) (*Bot,
 		&i.RetryAfter,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
 	)
 	return &i, err
 }
@@ -175,7 +176,7 @@ func (q *Queries) DeleteChannel(ctx context.Context, arg DeleteChannelParams) (i
 }
 
 const getBot = `-- name: GetBot :one
-SELECT bot_id, user_id, username, token_ciphertext, enabled, session, consecutive_failures, last_error, last_used_at, retry_after, created_at, updated_at
+SELECT bot_id, user_id, username, token_ciphertext, enabled, session, consecutive_failures, last_error, last_used_at, retry_after, created_at, updated_at, name
 FROM /* TEMPLATE: schema */bots
 WHERE user_id = $1
   AND bot_id = $2
@@ -202,6 +203,7 @@ func (q *Queries) GetBot(ctx context.Context, arg GetBotParams) (*Bot, error) {
 		&i.RetryAfter,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
 	)
 	return &i, err
 }
@@ -271,7 +273,7 @@ SET token_ciphertext = EXCLUDED.token_ciphertext,
     retry_after = NULL,
     updated_at = now()
 WHERE NOT bot.enabled
-RETURNING bot.bot_id, bot.user_id, bot.username, bot.token_ciphertext, bot.enabled, bot.session, bot.consecutive_failures, bot.last_error, bot.last_used_at, bot.retry_after, bot.created_at, bot.updated_at
+RETURNING bot.bot_id, bot.user_id, bot.username, bot.token_ciphertext, bot.enabled, bot.session, bot.consecutive_failures, bot.last_error, bot.last_used_at, bot.retry_after, bot.created_at, bot.updated_at, bot.name
 `
 
 type InsertPendingBotsParams struct {
@@ -301,6 +303,7 @@ func (q *Queries) InsertPendingBots(ctx context.Context, arg InsertPendingBotsPa
 			&i.RetryAfter,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Name,
 		); err != nil {
 			return nil, err
 		}
@@ -312,8 +315,35 @@ func (q *Queries) InsertPendingBots(ctx context.Context, arg InsertPendingBotsPa
 	return items, nil
 }
 
+const listBotIDs = `-- name: ListBotIDs :many
+SELECT bot_id
+FROM /* TEMPLATE: schema */bots
+WHERE user_id = $1
+ORDER BY bot_id
+`
+
+func (q *Queries) ListBotIDs(ctx context.Context, userID int64) ([]int64, error) {
+	rows, err := q.db.Query(ctx, listBotIDs, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var bot_id int64
+		if err := rows.Scan(&bot_id); err != nil {
+			return nil, err
+		}
+		items = append(items, bot_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBots = `-- name: ListBots :many
-SELECT bot_id, user_id, username, token_ciphertext, enabled, session, consecutive_failures, last_error, last_used_at, retry_after, created_at, updated_at
+SELECT bot_id, user_id, username, token_ciphertext, enabled, session, consecutive_failures, last_error, last_used_at, retry_after, created_at, updated_at, name
 FROM /* TEMPLATE: schema */bots
 WHERE user_id = $1
   AND (
@@ -361,6 +391,7 @@ func (q *Queries) ListBots(ctx context.Context, arg ListBotsParams) ([]*Bot, err
 			&i.RetryAfter,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Name,
 		); err != nil {
 			return nil, err
 		}
@@ -510,8 +541,63 @@ func (q *Queries) ListChannelsForOrphanCleanup(ctx context.Context) ([]*Channel,
 	return items, nil
 }
 
+const listDownloadEligibleBots = `-- name: ListDownloadEligibleBots :many
+SELECT download_bot.bot_id, download_bot.user_id, download_bot.username, download_bot.token_ciphertext, download_bot.enabled, download_bot.session, download_bot.consecutive_failures, download_bot.last_error, download_bot.last_used_at, download_bot.retry_after, download_bot.created_at, download_bot.updated_at, download_bot.name
+FROM (
+    SELECT bot_id, user_id, username, token_ciphertext, enabled, session, consecutive_failures, last_error, last_used_at, retry_after, created_at, updated_at, name
+    FROM /* TEMPLATE: schema */bots
+    WHERE user_id = $1
+      AND enabled
+    ORDER BY bot_id
+    LIMIT $2::int
+) AS download_bot
+WHERE download_bot.retry_after IS NULL OR download_bot.retry_after <= now()
+ORDER BY download_bot.bot_id
+`
+
+type ListDownloadEligibleBotsParams struct {
+	UserID       int64 `json:"user_id"`
+	DownloadBots int32 `json:"download_bots"`
+}
+
+// Downloads use the first N enabled bots; a bot that is backing off leaves a
+// gap instead of letting a bot beyond N take its place.
+func (q *Queries) ListDownloadEligibleBots(ctx context.Context, arg ListDownloadEligibleBotsParams) ([]*Bot, error) {
+	rows, err := q.db.Query(ctx, listDownloadEligibleBots, arg.UserID, arg.DownloadBots)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*Bot{}
+	for rows.Next() {
+		var i Bot
+		if err := rows.Scan(
+			&i.BotID,
+			&i.UserID,
+			&i.Username,
+			&i.TokenCiphertext,
+			&i.Enabled,
+			&i.Session,
+			&i.ConsecutiveFailures,
+			&i.LastError,
+			&i.LastUsedAt,
+			&i.RetryAfter,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Name,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEnabledBots = `-- name: ListEnabledBots :many
-SELECT bot_id, user_id, username, token_ciphertext, enabled, session, consecutive_failures, last_error, last_used_at, retry_after, created_at, updated_at
+SELECT bot_id, user_id, username, token_ciphertext, enabled, session, consecutive_failures, last_error, last_used_at, retry_after, created_at, updated_at, name
 FROM /* TEMPLATE: schema */bots
 WHERE user_id = $1
   AND enabled
@@ -540,6 +626,7 @@ func (q *Queries) ListEnabledBots(ctx context.Context, userID int64) ([]*Bot, er
 			&i.RetryAfter,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Name,
 		); err != nil {
 			return nil, err
 		}
@@ -592,7 +679,7 @@ func (q *Queries) ListReferencedMessageIDs(ctx context.Context, arg ListReferenc
 }
 
 const listUploadEligibleBots = `-- name: ListUploadEligibleBots :many
-SELECT bot_id, user_id, username, token_ciphertext, enabled, session, consecutive_failures, last_error, last_used_at, retry_after, created_at, updated_at
+SELECT bot_id, user_id, username, token_ciphertext, enabled, session, consecutive_failures, last_error, last_used_at, retry_after, created_at, updated_at, name
 FROM /* TEMPLATE: schema */bots
 WHERE user_id = $1
   AND enabled
@@ -622,6 +709,7 @@ func (q *Queries) ListUploadEligibleBots(ctx context.Context, userID int64) ([]*
 			&i.RetryAfter,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Name,
 		); err != nil {
 			return nil, err
 		}
@@ -631,6 +719,30 @@ func (q *Queries) ListUploadEligibleBots(ctx context.Context, userID int64) ([]*
 		return nil, err
 	}
 	return items, nil
+}
+
+const markBotFailure = `-- name: MarkBotFailure :execrows
+UPDATE /* TEMPLATE: schema */bots
+SET consecutive_failures = consecutive_failures + 1,
+    last_error = left($1, 1000),
+    retry_after = now() + interval '30 seconds',
+    updated_at = now()
+WHERE user_id = $2
+  AND bot_id = $3
+`
+
+type MarkBotFailureParams struct {
+	LastError string `json:"last_error"`
+	UserID    int64  `json:"user_id"`
+	BotID     int64  `json:"bot_id"`
+}
+
+func (q *Queries) MarkBotFailure(ctx context.Context, arg MarkBotFailureParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markBotFailure, arg.LastError, arg.UserID, arg.BotID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const markBotProvisionFailure = `-- name: MarkBotProvisionFailure :execrows
@@ -657,24 +769,25 @@ func (q *Queries) MarkBotProvisionFailure(ctx context.Context, arg MarkBotProvis
 	return result.RowsAffected(), nil
 }
 
-const markBotUploadFailure = `-- name: MarkBotUploadFailure :execrows
+const markBotTokenRevoked = `-- name: MarkBotTokenRevoked :execrows
 UPDATE /* TEMPLATE: schema */bots
-SET consecutive_failures = consecutive_failures + 1,
+SET enabled = FALSE,
+    consecutive_failures = consecutive_failures + 1,
     last_error = left($1, 1000),
-    retry_after = now() + interval '30 seconds',
+    retry_after = NULL,
     updated_at = now()
 WHERE user_id = $2
   AND bot_id = $3
 `
 
-type MarkBotUploadFailureParams struct {
+type MarkBotTokenRevokedParams struct {
 	LastError string `json:"last_error"`
 	UserID    int64  `json:"user_id"`
 	BotID     int64  `json:"bot_id"`
 }
 
-func (q *Queries) MarkBotUploadFailure(ctx context.Context, arg MarkBotUploadFailureParams) (int64, error) {
-	result, err := q.db.Exec(ctx, markBotUploadFailure, arg.LastError, arg.UserID, arg.BotID)
+func (q *Queries) MarkBotTokenRevoked(ctx context.Context, arg MarkBotTokenRevokedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markBotTokenRevoked, arg.LastError, arg.UserID, arg.BotID)
 	if err != nil {
 		return 0, err
 	}
@@ -759,6 +872,49 @@ func (q *Queries) SelectChannel(ctx context.Context, arg SelectChannelParams) (*
 		&i.LastCheckedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
+const updateBotIdentity = `-- name: UpdateBotIdentity :one
+UPDATE /* TEMPLATE: schema */bots
+SET name = $1,
+    username = $2,
+    updated_at = now()
+WHERE user_id = $3
+  AND bot_id = $4
+RETURNING bot_id, user_id, username, token_ciphertext, enabled, session, consecutive_failures, last_error, last_used_at, retry_after, created_at, updated_at, name
+`
+
+type UpdateBotIdentityParams struct {
+	Name     pgtype.Text `json:"name"`
+	Username pgtype.Text `json:"username"`
+	UserID   int64       `json:"user_id"`
+	BotID    int64       `json:"bot_id"`
+}
+
+func (q *Queries) UpdateBotIdentity(ctx context.Context, arg UpdateBotIdentityParams) (*Bot, error) {
+	row := q.db.QueryRow(ctx, updateBotIdentity,
+		arg.Name,
+		arg.Username,
+		arg.UserID,
+		arg.BotID,
+	)
+	var i Bot
+	err := row.Scan(
+		&i.BotID,
+		&i.UserID,
+		&i.Username,
+		&i.TokenCiphertext,
+		&i.Enabled,
+		&i.Session,
+		&i.ConsecutiveFailures,
+		&i.LastError,
+		&i.LastUsedAt,
+		&i.RetryAfter,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
 	)
 	return &i, err
 }

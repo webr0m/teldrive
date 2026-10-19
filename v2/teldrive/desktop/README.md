@@ -2,6 +2,60 @@
 
 Aplicación para Windows 10/11 de 64 bits, construida con .NET 10, WPF y WebView2. El paquete incluye el servidor Teldrive, el rclone compatible con la API v2, PostgreSQL, FFmpeg/FFprobe y los instaladores oficiales de WinFsp, WebView2 y Visual C++. El primer inicio presenta la configuración del servidor y abre la UI en la propia ventana.
 
+## Reproducción y diagnóstico (2.0.0.10)
+
+Pantalla completa está disponible en el vídeo de la ventana web y en el reproductor
+nativo. En el nativo usa el botón, F/F11 o doble clic; Esc restaura la ventana y su
+posición. Los menús de bandeja ejecutan sus acciones después de cerrar el menú
+nativo, para evitar errores de reentrada de WPF/WebView2.
+
+Activa **Desarrollador · estadísticas** durante la reproducción de vídeo o audio.
+Desktop nativo consulta mpv por IPC: contenedor, códecs, resolución, FPS, tasa de
+bits, audio, aceleración, fotogramas descartados, sincronización A/V, búfer,
+velocidad, pausa y posición. En la ventana web se muestran los datos que el navegador
+ofrece y las pistas detectadas por FFprobe. Un campo no disponible no se estima.
+
+Las estadísticas de Telegram identifican cada cuenta que realmente recibe datos
+con nombre, @alias e ID, bytes, velocidad móvil de dos segundos, solicitudes activas,
+latencia, errores y último canal/mensaje/offset. Suman las lecturas del archivo en
+el servidor (incluidas búsquedas y reproducciones simultáneas); no representan una
+medición exclusiva de una ventana. Una velocidad cero puede significar que ya hay
+contenido en búfer. Las identidades solo están disponibles para el propietario,
+no mediante enlaces públicos. No se muestran claves, tokens ni URL de reproducción.
+El origen nativo debe ser una conexión Teldrive; otros tipos de rclone conservan
+los datos de mpv y muestran que la telemetría de Telegram no está disponible.
+
+Se integra el original `tgdrive/teldrive` hasta `67bf180`: provisión independiente
+de bots, selección y control de carga de cuentas, favoritos/recientes, preferencias
+por cuenta, tamaños de carpetas, orden natural y mejoras de lectores/búsqueda.
+Las migraciones propias 8–10 conservan su numeración y las nuevas ocupan 11–16.
+Una reconciliación aditiva reconoce las tablas de las migraciones 8–12 del
+original y conserva los datos existentes al cambiar a esta edición.
+
+`--smoke-player --data-root RUTA_NUEVA` comprueba reproducción local real con mpv,
+IPC, pausa, pantalla completa/restauración, estadísticas y callbacks de bandeja.
+No usa credenciales ni tráfico de Telegram.
+
+## Crear bots desde Configuración (2.0.0.8)
+
+Desde la versión **2.0.0.9**, la lista presenta el **nombre**, el **@alias** y el
+**ID** en líneas separadas y se ordena por nombre. El selector de gestor y la
+confirmación al eliminar incluyen los tres datos. Si faltan datos antiguos, el
+servidor los recupera desde Telegram; los bots pendientes conservan su estado y
+sus permisos. Si Telegram no responde o el token es inválido, se mantiene el ID y
+se indica que el nombre o alias está pendiente.
+
+En **Configuración → Bots**, importa una vez el token de un bot gestor y activa
+**Bot Management Mode** en sus ajustes de BotFather. Selecciónalo y pulsa
+**Verificar gestor**. Después introduce el nombre y el usuario del nuevo bot,
+comprueba la disponibilidad y pulsa **Crear y añadir bot**.
+
+La creación usa tu sesión de Telegram. El servidor obtiene el token con el gestor,
+lo guarda cifrado y programa la verificación e incorporación a los canales existentes.
+Si se interrumpe, repite con el mismo usuario y gestor para recuperar tu bot.
+La importación de tokens existentes sigue disponible. Requiere el servidor en modo
+Telegram remoto; el modo de pruebas local no crea bots reales.
+
 ## Dominio para enlaces compartidos
 
 En **Configuración → Configuración avanzada**, agrega `public-url = "https://drive.tudominio.com"`
@@ -55,7 +109,7 @@ Por defecto, los datos se guardan en `%LOCALAPPDATA%\TeldriveV2`. No se reutiliz
 
 ## Navegación, configuración personalizada y transmisión (2.0.0.5)
 
-El botón superior **Teldrive** recupera el Drive desde Actividad, Configuración u Opciones adicionales de rclone. El control WebView2 utiliza composición para evitar que una superficie del navegador oculte los paneles WPF. Actividad conserva una cola de texto acotada.
+El botón superior **Teldrive** recupera el Drive desde Actividad, Configuración u Opciones adicionales de rclone. El WebView2 de ventana se oculta antes de mostrar los paneles WPF y evita el error gráfico `0x8876086C` de la superficie Direct3D9 del host de composición. Actividad conserva una cola de texto acotada.
 
 **rclone.conf** importa una copia del archivo original, valida y edita sus conexiones sin borrar comentarios/opciones adicionales. Los valores privados están ocultos en la lista; el editor completo se abre expresamente. Guardar crea `rclone.conf.previous` y conserva el cifrado si estaba activado. Las transferencias y montajes deben estar detenidos al modificar el archivo. Las tareas pueden elegir el nombre de una conexión personalizada. En la UI web de un CLI, el editor importa y exporta el archivo local; no escribe en el servidor.
 
@@ -67,9 +121,13 @@ FFprobe detecta las pistas de audio y subtítulos de MKV y otros contenedores. F
 
 ## Corrección del doble clic (2.0.0.6)
 
-Desktop suprime el evento de botón duplicado que el SDK WebView2 de composición reenvía durante un doble clic. Se conservan los eventos normales de ratón y los manejadores táctiles/teclado del SDK. La corrección permite abrir carpetas y archivos con doble clic, sin recuperar la superposición blanca de Actividad. La UI del servidor y los seis CLI se actualizan también a v2.0.0-drive-es.6.
+El host de ventana WebView2 recibe el ratón directamente desde Windows. No usa
+el reenvío de doble clic de WPF que duplicaba eventos en el control de composición.
 
-`--smoke-input --data-root RUTA_DE_PRUEBA` verifica el doble clic nativo dentro de WebView2 y la apertura de carpetas en lista y cuadrícula. Usa una base local aislada y respuestas de API simuladas; no modifica los archivos del usuario. La secuencia pasa por el manejador WPF de doble clic y el controlador de composición, con un registro de los eventos recibidos por la página.
+`--smoke-input --data-root RUTA_DE_PRUEBA` verifica la apertura de carpetas en
+lista y cuadrícula mediante el protocolo de entrada de Chromium. Usa una base
+local aislada y respuestas de API simuladas; no modifica archivos del usuario.
+Guarda el registro de eventos recibidos por la página.
 
 ## Montajes persistentes e idiomas (2.0.0.6)
 
