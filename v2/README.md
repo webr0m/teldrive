@@ -1,5 +1,7 @@
 # Teldrive v2.0.0-drive-es.10
 
+[GitLab](https://gitlab.com/ridrogo/teldrive/-/releases/v2.0.0-drive-es.10) · [GitHub](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.10).
+
 # Teldrive v2.0.0-drive-es.10
 
 Integra las actualizaciones del original hasta `67bf180` y reúne las mejoras de bots y Desktop en una sola versión.
@@ -22,4 +24,4 @@ Go unitario completo, vet, TypeSpec, TypeScript, lint y compilación de UI; regr
 
 No se han usado bots ni credenciales reales de Telegram. El harness de integración PostgreSQL no pudo ejecutarse porque Docker no está disponible; las pruebas de autorización de estadísticas y reconciliación del esquema original se compilaron, pero necesitan ese harness para ejecutarse. Linux/macOS/ARM64 se compilan y verifican por arquitectura/metadatos, sin ejecución nativa. La prueba iPhone usa una ruta explícita al WebKit instalado. Los datos de mpv solo se muestran cuando el motor los proporciona; otros orígenes rclone mantienen los datos del reproductor sin atribuir cuentas de Telegram.
 
-Las revisiones exactas de las fuentes están en source-revisions.json.
+Fuentes en teldrive/ y rclone/. source-revisions.json conserva los commits originales; blobs y permisos se preservan.
