@@ -1,4 +1,4 @@
-> **Teldrive v2.0.0-drive-es.10:** Desktop con pantalla completa, estadísticas de reproducción y bots identificados. [Descargar](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.10) · [GitLab](https://gitlab.com/ridrogo/teldrive/-/releases/v2.0.0-drive-es.10).
+> **Teldrive Desktop 2.0.0.11:** Corrección al reabrir ventanas maximizadas desde la bandeja. [Descargar](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.11) · [GitLab](https://gitlab.com/ridrogo/teldrive/-/releases/v2.0.0-drive-es.11).
 
 # Teldrive
 
