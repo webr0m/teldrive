@@ -18,6 +18,7 @@ import (
 	"github.com/gotd/td/tgerr"
 
 	"github.com/tgdrive/teldrive/v2/internal/cache"
+	"github.com/tgdrive/teldrive/v2/internal/streamstats"
 )
 
 const (
@@ -193,7 +194,7 @@ func fillRangeWithLocation(ctx context.Context, api *tg.Client, request RangeReq
 	if remaining < 0 || request.Offset+remaining > documentSize {
 		remaining = documentSize - request.Offset
 	}
-	return reader.fill(ctx, api, location, request.Offset, remaining, refresh)
+	return reader.fill(streamstats.WithPart(ctx, request.ChannelID, request.MessageID), api, location, request.Offset, remaining, refresh)
 }
 
 type gotdDownloadSession struct {
@@ -309,7 +310,7 @@ func (s *gotdDownloadSession) OpenRange(ctx context.Context, request RangeReques
 	if err != nil {
 		return nil, err
 	}
-	streamCtx, cancel := context.WithCancel(ctx)
+	streamCtx, cancel := context.WithCancel(WithClientID(ctx, s.clientID))
 	reader := newTelegramRangeReader(streamCtx, cancel, s.downloadReadBuffers, s.downloadReadParallel)
 	go func() {
 		location, size, locationErr := s.documentLocation(streamCtx, api, request.ChannelID, request.MessageID)
@@ -483,12 +484,20 @@ func (r *telegramRangeReader) fill(ctx context.Context, api *tg.Client, location
 			locationMu.RUnlock()
 
 			download := func(callCtx context.Context, loc *tg.InputDocumentFileLocation) (tg.UploadFileClass, error) {
-				return api.UploadGetFile(callCtx, &tg.UploadGetFileRequest{
+				id, _ := ClientID(callCtx)
+				complete := streamstats.BeginDownload(callCtx, id, plan.offset)
+				response, err := api.UploadGetFile(callCtx, &tg.UploadGetFileRequest{
 					Location: loc,
 					Offset:   plan.offset,
 					Limit:    plan.limit,
 					Precise:  true,
 				})
+				n := 0
+				if file, ok := response.(*tg.UploadFile); ok {
+					n = len(file.Bytes)
+				}
+				complete(n, err)
+				return response, err
 			}
 
 			var response tg.UploadFileClass

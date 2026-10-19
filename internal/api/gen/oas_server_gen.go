@@ -37,6 +37,12 @@ type Handler interface {
 	//
 	// POST /v1/files/bulk/move
 	BulkMoveFiles(ctx context.Context, req *FileBulkMoveRequest, params BulkMoveFilesParams) (BulkMoveFilesRes, error)
+	// BulkSpamFiles implements bulkSpamFiles operation.
+	//
+	// Quarantine owned files and folders and revoke their sharing.
+	//
+	// POST /v1/files/bulk/spam
+	BulkSpamFiles(ctx context.Context, req *FileBulkTrashRequest, params BulkSpamFilesParams) (BulkSpamFilesRes, error)
 	// BulkTrashFiles implements bulkTrashFiles operation.
 	//
 	// Transactionally move multiple files or folders to trash.
@@ -47,6 +53,10 @@ type Handler interface {
 	//
 	// POST /v1/jobs/{jobId}/cancel
 	CancelJob(ctx context.Context, params CancelJobParams) (CancelJobRes, error)
+	// CheckManagedBotUsername implements checkManagedBotUsername operation.
+	//
+	// POST /v1/bots/managed/check-username
+	CheckManagedBotUsername(ctx context.Context, req *BotUsernameRequest) (CheckManagedBotUsernameRes, error)
 	// CleanTrash implements cleanTrash operation.
 	//
 	// Move every trashed file and folder owned by the authenticated user to deletion pending.
@@ -64,6 +74,10 @@ type Handler interface {
 	//
 	// POST /v1/uploads/{uploadId}/complete
 	CompleteUpload(ctx context.Context, params CompleteUploadParams) (CompleteUploadRes, error)
+	// ControlCastingDevice implements controlCastingDevice operation.
+	//
+	// POST /v1/casting/devices/{deviceId}/control
+	ControlCastingDevice(ctx context.Context, req *ControlCastingDeviceReq, params ControlCastingDeviceParams) (ControlCastingDeviceRes, error)
 	// CookieTelegramLoginVerifyCode implements cookieTelegramLoginVerifyCode operation.
 	//
 	// Complete Telegram code verification and establish an HttpOnly cookie session.
@@ -96,6 +110,10 @@ type Handler interface {
 	//
 	// POST /v1/bots
 	CreateBots(ctx context.Context, req *BotCreateRequest, params CreateBotsParams) (CreateBotsRes, error)
+	// CreateCastingRelay implements createCastingRelay operation.
+	//
+	// POST /v1/casting/relay
+	CreateCastingRelay(ctx context.Context, req *CreateCastingRelayReq) (CreateCastingRelayRes, error)
 	// CreateChannel implements createChannel operation.
 	//
 	// POST /v1/channels
@@ -118,10 +136,22 @@ type Handler interface {
 	//
 	// POST /v1/jobs
 	CreateJob(ctx context.Context, req *JobCreate) (CreateJobRes, error)
+	// CreateManagedBot implements createManagedBot operation.
+	//
+	// POST /v1/bots/managed
+	CreateManagedBot(ctx context.Context, req *ManagedBotCreateRequest, params CreateManagedBotParams) (CreateManagedBotRes, error)
 	// CreatePeriodicJob implements createPeriodicJob operation.
 	//
 	// POST /v1/periodic-jobs
 	CreatePeriodicJob(ctx context.Context, req *PeriodicJobCreate) (CreatePeriodicJobRes, error)
+	// CreatePlayback implements createPlayback operation.
+	//
+	// POST /v1/files/{fileId}/playback
+	CreatePlayback(ctx context.Context, params CreatePlaybackParams) (CreatePlaybackRes, error)
+	// CreatePublicPlayback implements createPublicPlayback operation.
+	//
+	// POST /v1/public/shares/{token}/files/{fileId}/playback
+	CreatePublicPlayback(ctx context.Context, params CreatePublicPlaybackParams) (CreatePublicPlaybackRes, error)
 	// CreatePublicShareFolder implements createPublicShareFolder operation.
 	//
 	// POST /v1/public/shares/{token}/folders
@@ -174,6 +204,14 @@ type Handler interface {
 	//
 	// GET /v1/channels/discover
 	DiscoverChannels(ctx context.Context) (DiscoverChannelsRes, error)
+	// DismissIncomingSpam implements dismissIncomingSpam operation.
+	//
+	// DELETE /v1/shared/spam/{fileId}/dismiss
+	DismissIncomingSpam(ctx context.Context, params DismissIncomingSpamParams) (DismissIncomingSpamRes, error)
+	// GetBotManager implements getBotManager operation.
+	//
+	// GET /v1/bots/{botId}/manager
+	GetBotManager(ctx context.Context, params GetBotManagerParams) (GetBotManagerRes, error)
 	// GetCurrentUser implements getCurrentUser operation.
 	//
 	// Return the authenticated user profile.
@@ -198,6 +236,10 @@ type Handler interface {
 	//
 	// GET /v1/files/statistics/categories
 	GetFileCategoryStatistics(ctx context.Context) (GetFileCategoryStatisticsRes, error)
+	// GetFilePlaybackStatistics implements getFilePlaybackStatistics operation.
+	//
+	// GET /v1/files/{fileId}/playback/statistics
+	GetFilePlaybackStatistics(ctx context.Context, params GetFilePlaybackStatisticsParams) (GetFilePlaybackStatisticsRes, error)
 	// GetFileViewState implements getFileViewState operation.
 	//
 	// Return the authenticated user's synchronized viewer state for a file.
@@ -216,6 +258,10 @@ type Handler interface {
 	//
 	// GET /v1/periodic-jobs/catalog
 	GetPeriodicJobCatalog(ctx context.Context) (GetPeriodicJobCatalogRes, error)
+	// GetPlaybackTracks implements getPlaybackTracks operation.
+	//
+	// GET /v1/playback/tracks
+	GetPlaybackTracks(ctx context.Context, params GetPlaybackTracksParams) (GetPlaybackTracksRes, error)
 	// GetProfilePhoto implements getProfilePhoto operation.
 	//
 	// Return the authenticated Telegram user's small profile photo.
@@ -302,6 +348,10 @@ type Handler interface {
 	//
 	// GET /v1/bots
 	ListBots(ctx context.Context, params ListBotsParams) (ListBotsRes, error)
+	// ListCastingDevices implements listCastingDevices operation.
+	//
+	// GET /v1/casting/devices
+	ListCastingDevices(ctx context.Context) (ListCastingDevicesRes, error)
 	// ListChannels implements listChannels operation.
 	//
 	// GET /v1/channels
@@ -320,6 +370,10 @@ type Handler interface {
 	//
 	// GET /v1/files
 	ListFiles(ctx context.Context, params ListFilesParams) (ListFilesRes, error)
+	// ListIncomingSpam implements listIncomingSpam operation.
+	//
+	// GET /v1/shared/spam
+	ListIncomingSpam(ctx context.Context) (ListIncomingSpamRes, error)
 	// ListJobQueues implements listJobQueues operation.
 	//
 	// GET /v1/jobs/queues
@@ -376,6 +430,10 @@ type Handler interface {
 	//
 	// POST /v1/auth/logout
 	LogoutSession(ctx context.Context) (LogoutSessionRes, error)
+	// MarkIncomingSpam implements markIncomingSpam operation.
+	//
+	// POST /v1/shared/spam/{fileId}
+	MarkIncomingSpam(ctx context.Context, params MarkIncomingSpamParams) (MarkIncomingSpamRes, error)
 	// MoveFile implements moveFile operation.
 	//
 	// Move a file or folder using metadata only.
@@ -390,6 +448,10 @@ type Handler interface {
 	//
 	// POST /v1/periodic-jobs/{periodicJobId}/pause
 	PausePeriodicJob(ctx context.Context, params PausePeriodicJobParams) (PausePeriodicJobRes, error)
+	// PlayOnCastingDevice implements playOnCastingDevice operation.
+	//
+	// POST /v1/casting/devices/{deviceId}/play
+	PlayOnCastingDevice(ctx context.Context, req *CastingStart, params PlayOnCastingDeviceParams) (PlayOnCastingDeviceRes, error)
 	// ProvisionBot implements provisionBot operation.
 	//
 	// Re-verify a saved bot and repair its access to the user's registered channels.
@@ -457,6 +519,10 @@ type Handler interface {
 	//
 	// POST /v1/files/{fileId}/restore
 	RestoreFile(ctx context.Context, params RestoreFileParams) (RestoreFileRes, error)
+	// RestoreIncomingSpam implements restoreIncomingSpam operation.
+	//
+	// DELETE /v1/shared/spam/{fileId}
+	RestoreIncomingSpam(ctx context.Context, params RestoreIncomingSpamParams) (RestoreIncomingSpamRes, error)
 	// ResumeJobQueue implements resumeJobQueue operation.
 	//
 	// POST /v1/jobs/queues/{queue}/resume
@@ -610,12 +676,20 @@ type RawHandler interface {
 	//
 	// GET /v1/public/shares/{token}/content
 	DownloadPublicShareLegacy(ctx context.Context, params DownloadPublicShareLegacyParams, w http.ResponseWriter) error
+	// GetPlaybackSubtitles implements getPlaybackSubtitles operation.
+	//
+	// GET /v1/playback/subtitles
+	GetPlaybackSubtitles(ctx context.Context, params GetPlaybackSubtitlesParams, w http.ResponseWriter) error
 	// StreamEvents implements streamEvents operation.
 	//
 	// Subscribe to ordered, replayable events for the authenticated user.
 	//
 	// GET /v1/events
 	StreamEvents(ctx context.Context, params StreamEventsParams, w http.ResponseWriter) error
+	// StreamPlayback implements streamPlayback operation.
+	//
+	// GET /v1/playback
+	StreamPlayback(ctx context.Context, params StreamPlaybackParams, w http.ResponseWriter) error
 }
 
 // Server implements http server based on OpenAPI v3 specification and

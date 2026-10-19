@@ -1,3 +1,4 @@
+import { t } from "@/lib/localization";
 import { Button, Modal, Separator, Typography } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
@@ -12,9 +13,8 @@ import StorageIcon from "~icons/gravity-ui/database";
 import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
 import CloseIcon from "~icons/gravity-ui/xmark";
 import ClockIcon from "~icons/gravity-ui/clock";
+import InfoIcon from "~icons/gravity-ui/circle-info";
 import { currentUserQueryOptions } from "@/auth/queries";
-import { useAppLocale } from "@/lib/locale";
-
 const SETTINGS_GROUPS = [
   {
     key: "account",
@@ -47,6 +47,7 @@ const SETTINGS_GROUPS = [
     items: [
       { key: "uploads", path: "/settings/uploads", icon: UploadIcon },
       { key: "appearance", path: "/settings/appearance", icon: PaletteIcon },
+      { key: "rclone", path: "/settings/rclone", icon: StorageIcon },
     ],
   },
   {
@@ -58,6 +59,7 @@ const SETTINGS_GROUPS = [
         icon: ClockIcon,
         capability: "system.maintenance",
       },
+      { key: "info", path: "/settings/info", icon: InfoIcon },
     ],
   },
 ] as const;
@@ -66,7 +68,7 @@ export const Route = createFileRoute("/_settings")({ component: SettingsLayout }
 
 function SettingsLayout() {
   const location = useLocation();
-  const { t } = useAppLocale();
+
   const { data: user } = useQuery(currentUserQueryOptions());
   const [mobileOpen, setMobileOpen] = useState(false);
   const visibleGroups = settingsGroupsFor(user?.capabilities ?? []);
@@ -86,10 +88,10 @@ function SettingsLayout() {
         <div className="sticky top-0 flex max-h-[calc(100dvh-7rem)] flex-col gap-5 overflow-y-auto border-r border-border pr-5">
           <div>
             <Typography type="h2" className="text-lg font-semibold">
-              {t("settings.title")}
+              {t("Configuración")}
             </Typography>
             <Typography.Paragraph className="mt-1 text-xs text-muted">
-              {t("settings.description")}
+              {t("Configura Teldrive y este navegador.")}
             </Typography.Paragraph>
           </div>
           <SettingsNavigation currentPath={location.pathname} groups={visibleGroups} />
@@ -99,17 +101,17 @@ function SettingsLayout() {
         <div className="mb-5 flex items-center justify-between border-b border-border pb-4 lg:hidden">
           <div>
             <Typography type="h2" className="text-base font-semibold">
-              {activeLabel ?? t("settings.title")}
+              {activeLabel ?? t("Configuración")}
             </Typography>
             <Typography.Paragraph className="text-xs text-muted">
-              {t("settings.mobileDescription")}
+              {t("Configuración de Teldrive")}
             </Typography.Paragraph>
           </div>
           <Button
             isIconOnly
             size="sm"
             variant="tertiary"
-            aria-label={t("settings.openNav")}
+            aria-label={t("Abrir menú de configuración")}
             onPress={() => setMobileOpen(true)}
           >
             <MenuIcon className="size-4" />
@@ -122,16 +124,16 @@ function SettingsLayout() {
           <Modal.Dialog className="h-full rounded-none">
             <Modal.Header className="flex-row items-center justify-between border-b border-border">
               <div>
-                <Modal.Heading>{t("settings.dialogTitle")}</Modal.Heading>
+                <Modal.Heading>{t("Configuración")}</Modal.Heading>
                 <Typography.Paragraph className="text-xs text-muted">
-                  {t("settings.dialogDescription")}
+                  {t("Elige una sección de configuración.")}
                 </Typography.Paragraph>
               </div>
               <Button
                 isIconOnly
                 size="sm"
                 variant="tertiary"
-                aria-label={t("settings.closeNav")}
+                aria-label={t("Cerrar menú de configuración")}
                 onPress={() => setMobileOpen(false)}
               >
                 <CloseIcon className="size-4" />
@@ -160,9 +162,8 @@ function SettingsNavigation({
   groups: SettingsGroup[];
   onNavigate?: () => void;
 }) {
-  const { t } = useAppLocale();
   return (
-    <nav aria-label={t("settings.navLabel")} className="flex flex-col gap-5">
+    <nav aria-label={t("Menú de configuración")} className="flex flex-col gap-5">
       {groups.map((group, groupIndex) => (
         <div key={group.key} className="flex flex-col gap-1.5">
           {groupIndex > 0 ? <Separator className="mb-3" /> : null}

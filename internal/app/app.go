@@ -23,6 +23,7 @@ import (
 	"github.com/tgdrive/teldrive/v2/internal/authn"
 	"github.com/tgdrive/teldrive/v2/internal/bots"
 	"github.com/tgdrive/teldrive/v2/internal/cache"
+	"github.com/tgdrive/teldrive/v2/internal/casting"
 	"github.com/tgdrive/teldrive/v2/internal/catalog"
 	"github.com/tgdrive/teldrive/v2/internal/channels"
 	"github.com/tgdrive/teldrive/v2/internal/config"
@@ -33,6 +34,7 @@ import (
 	"github.com/tgdrive/teldrive/v2/internal/health"
 	"github.com/tgdrive/teldrive/v2/internal/jobs"
 	"github.com/tgdrive/teldrive/v2/internal/legacymigrate"
+	"github.com/tgdrive/teldrive/v2/internal/media"
 	"github.com/tgdrive/teldrive/v2/internal/secureblob"
 	"github.com/tgdrive/teldrive/v2/internal/shares"
 	"github.com/tgdrive/teldrive/v2/internal/telegramstore"
@@ -60,6 +62,7 @@ type App struct {
 	events            *userevents.Service
 	telegramDownloads *telegramstore.DownloadClientPool
 	globalCache       cache.Cacher
+	casting           *casting.Service
 
 	mu      sync.Mutex
 	running bool
@@ -174,6 +177,8 @@ func New(ctx context.Context, cfg config.Config, dependencies Dependencies) (*Ap
 	if err != nil {
 		return nil, fmt.Errorf("create bot service: %w", err)
 	}
+	botService.ConfigureManaged(telegram.managed)
+	botService.ConfigureIdentityCache(globalCache)
 	catalogService := catalog.NewService(pool, globalCache)
 	uploadService := uploads.NewService(pool, cfg.Uploads.SessionTTL)
 	uploadService.SetCacheInvalidator(catalogService)
@@ -192,7 +197,11 @@ func New(ctx context.Context, cfg config.Config, dependencies Dependencies) (*Ap
 	if err != nil {
 		return nil, fmt.Errorf("create file operations service: %w", err)
 	}
-	shareService, err := shares.NewService(pool, catalogService)
+	publicURL, err := cfg.HTTP.PublicBaseURL()
+	if err != nil {
+		return nil, fmt.Errorf("configure public share URL: %w", err)
+	}
+	shareService, err := shares.NewService(pool, catalogService, shares.WithPublicURL(publicURL))
 	if err != nil {
 		return nil, fmt.Errorf("create share service: %w", err)
 	}
@@ -210,6 +219,8 @@ func New(ctx context.Context, cfg config.Config, dependencies Dependencies) (*Ap
 		cfg.Encryption.ActiveKeyVersion, eventService,
 	).ConfigureDomains(authService, botService, channelService, fileService, shareService, telegramAccount).
 		ConfigureJobs(jobRuntime)
+	handler.Media = media.New(cfg.Media)
+	handler.Casting = casting.New()
 	httpServer, err := api.NewServer(handler, api.NewSecurity(authenticator, eventService).WithPublicFileContent(cfg.Security.PublicFileContent))
 	if err != nil {
 		return nil, fmt.Errorf("create generated HTTP server: %w", err)
@@ -234,6 +245,7 @@ func New(ctx context.Context, cfg config.Config, dependencies Dependencies) (*Ap
 		events:            eventService,
 		telegramDownloads: telegram.downloadClients,
 		globalCache:       globalCache,
+		casting:           handler.Casting,
 		http: &http.Server{
 			Addr:              cfg.HTTP.Address,
 			Handler:           mux,
@@ -407,6 +419,9 @@ func (a *App) Shutdown(ctx context.Context) error {
 		if err := a.jobs.Stop(ctx); err != nil && !errors.Is(err, jobs.ErrRuntimeNotConfigured) {
 			result = errors.Join(result, err)
 		}
+	}
+	if a.casting != nil {
+		result = errors.Join(result, a.casting.Close(ctx))
 	}
 	if closer, ok := a.globalCache.(interface{ Close() }); ok {
 		closer.Close()

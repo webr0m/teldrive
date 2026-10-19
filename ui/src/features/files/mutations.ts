@@ -15,6 +15,7 @@ export function useFileActions() {
 
   const cleanTrashMutation = $api.useMutation("delete", "/v1/files/trash");
   const bulkMoveMutation = $api.useMutation("post", "/v1/files/bulk/move");
+  const bulkSpamMutation = $api.useMutation("post", "/v1/files/bulk/spam");
   const bulkTrashMutation = $api.useMutation("post", "/v1/files/bulk/trash");
   const bookmarkMutation = $api.useMutation("post", "/v1/files/bookmarks");
   const removeBookmarksMutation = $api.useMutation("delete", "/v1/files/bookmarks");
@@ -146,6 +147,15 @@ export function useFileActions() {
     return result;
   }
 
+  async function bulkSpam(fileIds: string[]) {
+    const result = await bulkSpamMutation.mutateAsync({
+      params: { header: { "Idempotency-Key": newIdempotencyKey() } },
+      body: { fileIds },
+    });
+    await invalidateFiles();
+    return result;
+  }
+
   async function bulkTrash(fileIds: string[]) {
     const result = await bulkTrashMutation.mutateAsync({
       params: { header: { "Idempotency-Key": newIdempotencyKey() } },
@@ -192,6 +202,7 @@ export function useFileActions() {
 
     cleanTrashMutation,
     bulkMoveMutation,
+    bulkSpamMutation,
     bulkTrashMutation,
     bookmarkMutation,
     removeBookmarksMutation,
@@ -210,6 +221,7 @@ export function useFileActions() {
 
     cleanTrash,
     bulkMove,
+    bulkSpam,
     bulkTrash,
     bookmarkFiles,
     removeBookmarks,

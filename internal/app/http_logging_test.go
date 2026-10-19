@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strings"
 	"context"
 	"log/slog"
 	"net/http"
@@ -138,5 +139,12 @@ func TestHTTPRequestLoggerResolvesClientIPThroughTrustedProxies(t *testing.T) {
 				t.Fatalf("ip = %v, want %s", ip, test.want)
 			}
 		})
+	}
+}
+
+func TestHTTPQueriesDoNotLogPlaybackCredentials(t *testing.T) {
+	query := redactedHTTPQuery("ticket=private-capability&start=10&token=private-token")
+	if strings.Contains(query, "private-") || !strings.Contains(query, "start=10") {
+		t.Fatal(query)
 	}
 }

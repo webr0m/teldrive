@@ -68,3 +68,5 @@ test("settings content keeps the wide column when the navigation aside is not di
   expect(column.offset).toBeGreaterThanOrEqual(15 * REM);
   expect(column.width).toBeGreaterThan(500);
 });
+
+test.beforeEach(async ({page}) => {await page.addInitScript(() => localStorage.setItem("teldrive-language", "en"));});

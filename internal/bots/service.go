@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/tgdrive/teldrive/v2/internal/cache"
 	"github.com/tgdrive/teldrive/v2/internal/db/sqlcgen"
 	"github.com/tgdrive/teldrive/v2/internal/dbtypes"
 	"github.com/tgdrive/teldrive/v2/internal/secureblob"
@@ -26,6 +27,7 @@ var (
 
 type Identity struct {
 	ID       int64
+	Name     string
 	Username string
 }
 
@@ -45,10 +47,12 @@ type ListInput struct {
 }
 
 type Service struct {
-	pool     *pgxpool.Pool
-	queries  *sqlcgen.Queries
-	cipher   *secureblob.Cipher
-	verifier Verifier
+	pool          *pgxpool.Pool
+	queries       *sqlcgen.Queries
+	cipher        *secureblob.Cipher
+	verifier      Verifier
+	managed       ManagedGateway
+	identityCache cache.Cacher
 }
 
 type pendingBotRecord struct {
@@ -207,8 +211,11 @@ func (s *Service) verifyPending(ctx context.Context, userID, botID int64, activa
 	if identity.ID != botID || strings.TrimSpace(identity.Username) == "" {
 		return nil, ErrNotBot
 	}
+	row, err = s.saveIdentity(ctx, userID, identity)
+	if err != nil {
+		return nil, err
+	}
 	if !activate {
-		row.Username = dbtypes.OptionalText(nonEmpty(identity.Username))
 		return row, nil
 	}
 	return s.Activate(ctx, userID, botID, identity.Username)
@@ -267,6 +274,7 @@ func (s *Service) List(ctx context.Context, in ListInput) ([]*sqlcgen.Bot, error
 	if err != nil {
 		return nil, fmt.Errorf("list bots: %w", err)
 	}
+	s.hydrateIdentities(ctx, in.UserID, rows)
 	return rows, nil
 }
 

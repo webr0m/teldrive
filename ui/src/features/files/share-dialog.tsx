@@ -1,3 +1,4 @@
+import { t } from "@/lib/localization";
 import {
   Button,
   Chip,
@@ -19,7 +20,6 @@ import { AppDialog } from "@/components/dialogs/app-dialog";
 import { copyText } from "@/features/files/download";
 import { newIdempotencyKey } from "@/features/shared/idempotency";
 import { getQueryClient } from "@/lib/queryClient";
-import { useAppLocale } from "@/lib/locale";
 import { useDateTimeFormatter } from "@/lib/format";
 
 type Permission = "read" | "edit";
@@ -54,7 +54,7 @@ export function ShareDialog({
   const [linkExpirationMode, setLinkExpirationMode] = useState<ExpirationMode>("never");
   const [linkDuration, setLinkDuration] = useState("1d");
   const [createdUrl, setCreatedUrl] = useState("");
-  const { t } = useAppLocale();
+
   const formatDateTime = useDateTimeFormatter();
 
   useEffect(() => {
@@ -120,9 +120,9 @@ export function ShareDialog({
       });
       setPeopleSearch("");
       await refreshGrants();
-      toast.success(t("share.granted"));
+      toast.success(t("Acceso concedido"));
     } catch (error) {
-      toast.error(t("share.grantFailed"), {
+      toast.error(t("No se pudo conceder el acceso"), {
         description: userMessage(error),
       });
     }
@@ -146,9 +146,9 @@ export function ShareDialog({
       setCreatedUrl(publicUrl);
       await copyText(publicUrl);
       await refreshLinks();
-      toast.success(t("share.linkCreated"));
+      toast.success(t("Enlace público creado y copiado"));
     } catch (error) {
-      toast.error(t("share.linkCreateFailed"), {
+      toast.error(t("No se pudo crear el enlace público"), {
         description: userMessage(error),
       });
     }
@@ -158,34 +158,36 @@ export function ShareDialog({
     <AppDialog
       open={Boolean(file)}
       onOpenChange={onOpenChange}
-      title={file ? t("share.titleName", { name: file.name }) : t("share.titleItem")}
-      description={t("share.description")}
+      title={file ? t("Share {name}", { name: file.name }) : t("Compartir elemento")}
+      description={t("Manage who can access this item and create public links.")}
       size="lg"
       className="sm:w-[min(92vw,46rem)]"
       bodyClassName="py-4"
       footer={
         <Button variant="secondary" onPress={() => onOpenChange(false)}>
-          {t("share.close")}
+          {t("Cerrar")}
         </Button>
       }
     >
       <div className="grid gap-5">
         <section className="grid gap-4 rounded-2xl border border-border bg-default/10 p-4">
           <div>
-            <h3 className="text-sm font-semibold">{t("share.people")}</h3>
-            <p className="mt-1 text-xs text-muted">{t("share.peopleHint")}</p>
+            <h3 className="text-sm font-semibold">{t("Personas con acceso")}</h3>
+            <p className="mt-1 text-xs text-muted">
+              {t("El acceso se aplica a este elemento y su contenido.")}
+            </p>
           </div>
 
           <TextField value={peopleSearch} onChange={setPeopleSearch}>
-            <Label>{t("share.addUser")}</Label>
-            <Input placeholder={t("share.searchPlaceholder")} />
+            <Label>{t("Add a user")}</Label>
+            <Input placeholder={t("Buscar por nombre, usuario o ID de Telegram")} />
           </TextField>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <ControlField label={t("share.permission")}>
+            <ControlField label={t("Permiso")}>
               <PermissionPicker value={peoplePermission} onChange={setPeoplePermission} />
             </ControlField>
-            <ControlField label={t("share.expiration")}>
+            <ControlField label={t("Vencimiento")}>
               <ExpirationPicker
                 mode={peopleExpirationMode}
                 duration={peopleDuration}
@@ -214,18 +216,18 @@ export function ShareDialog({
                       <span className="block truncate text-sm font-medium">
                         {user.displayName?.trim() ||
                           user.username?.trim() ||
-                          t("share.userFallback", { id: user.userId })}
+                          t("User {id}", { id: user.userId })}
                       </span>
                       <span className="block truncate text-xs text-muted">
                         {user.username ? `@${user.username} · ` : ""}
-                        {t("share.telegramId", { id: user.userId })}
+                        {t("Telegram ID {id}", { id: user.userId })}
                       </span>
                     </span>
                   </Button>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-muted">{t("share.noUsers")}</p>
+              <p className="text-xs text-muted">{t("No se encontraron usuarios.")}</p>
             )
           ) : null}
 
@@ -244,18 +246,18 @@ export function ShareDialog({
                     <p className="truncate text-sm font-medium">
                       {grant.granteeDisplayName?.trim() ||
                         grant.granteeUsername?.trim() ||
-                        t("share.userFallback", { id: grant.granteeUserId })}
+                        t("User {id}", { id: grant.granteeUserId })}
                     </p>
                     <p className="truncate text-xs text-muted">
                       {grant.granteeUsername ? `@${grant.granteeUsername} · ` : ""}
-                      {t("share.telegramId", { id: grant.granteeUserId })}
+                      {t("Telegram ID {id}", { id: grant.granteeUserId })}
                     </p>
                     <p className="mt-0.5 truncate text-xs text-muted">
                       {grant.expiresAt
-                        ? t("share.expiresOn", {
+                        ? t("Expires {date}", {
                             date: formatDateTime.format(new Date(grant.expiresAt)),
                           })
-                        : t("share.noExpiration")}
+                        : t("Sin vencimiento")}
                     </p>
                   </div>
                   <Chip variant="tertiary">
@@ -266,13 +268,13 @@ export function ShareDialog({
                       isIconOnly
                       size="sm"
                       variant="ghost"
-                      aria-label={t("share.grantActions")}
+                      aria-label={t("Acciones de acceso")}
                     >
                       <span className="text-lg leading-none">⋯</span>
                     </Button>
                     <Dropdown.Popover className="min-w-48">
                       <Dropdown.Menu
-                        aria-label={t("share.grantActions")}
+                        aria-label={t("Acciones de acceso")}
                         onAction={(key) => {
                           if (key === "permission") {
                             void (async () => {
@@ -286,7 +288,7 @@ export function ShareDialog({
                                 });
                                 await refreshGrants();
                               } catch (error) {
-                                toast.error(t("share.permFailed"), {
+                                toast.error(t("No se pudo cambiar el permiso"), {
                                   description: userMessage(error),
                                 });
                               }
@@ -299,9 +301,9 @@ export function ShareDialog({
                                   params: { path: { grantId: grant.id } },
                                 });
                                 await refreshGrants();
-                                toast.success(t("share.removed"));
+                                toast.success(t("Acceso eliminado"));
                               } catch (error) {
-                                toast.error(t("share.removeFailed"), {
+                                toast.error(t("No se pudo eliminar el acceso"), {
                                   description: userMessage(error),
                                 });
                               }
@@ -309,15 +311,15 @@ export function ShareDialog({
                           }
                         }}
                       >
-                        <Dropdown.Item id="permission" textValue={t("share.changePermission")}>
+                        <Dropdown.Item id="permission" textValue={t("Cambiar permiso")}>
                           <Label>
                             {t(
                               grant.permission === "read" ? "share.makeEditor" : "share.makeViewer",
                             )}
                           </Label>
                         </Dropdown.Item>
-                        <Dropdown.Item id="remove" textValue={t("share.removeAccess")}>
-                          <Label>{t("share.removeAccess")}</Label>
+                        <Dropdown.Item id="remove" textValue={t("Eliminar acceso")}>
+                          <Label>{t("Eliminar acceso")}</Label>
                         </Dropdown.Item>
                       </Dropdown.Menu>
                     </Dropdown.Popover>
@@ -325,22 +327,28 @@ export function ShareDialog({
                 </div>
               ))
             ) : (
-              <p className="flex min-h-12 items-center text-xs text-muted">{t("share.noGrants")}</p>
+              <p className="flex min-h-12 items-center text-xs text-muted">
+                {t("No Teldrive users have access yet.")}
+              </p>
             )}
           </div>
         </section>
 
         <section className="grid gap-4 rounded-2xl border border-border bg-default/10 p-4">
           <div>
-            <h3 className="text-sm font-semibold">{t("share.links")}</h3>
-            <p className="mt-1 text-xs text-muted">{t("share.linksHint")}</p>
+            <h3 className="text-sm font-semibold">{t("Enlaces públicos")}</h3>
+            <p className="mt-1 text-xs text-muted">
+              {t(
+                "Cualquier persona con el enlace tendrá el permiso seleccionado. Puedes protegerlo con una contraseña.",
+              )}
+            </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <ControlField label={t("share.permission")}>
+            <ControlField label={t("Permiso")}>
               <PermissionPicker value={linkPermission} onChange={setLinkPermission} />
             </ControlField>
-            <ControlField label={t("share.expiration")}>
+            <ControlField label={t("Vencimiento")}>
               <ExpirationPicker
                 mode={linkExpirationMode}
                 duration={linkDuration}
@@ -351,8 +359,8 @@ export function ShareDialog({
           </div>
 
           <TextField value={linkPassword} onChange={setLinkPassword}>
-            <Label>{t("share.password")}</Label>
-            <Input type="password" placeholder={t("share.passwordPlaceholder")} />
+            <Label>{t("Contraseña")}</Label>
+            <Input type="password" placeholder={t("Contraseña opcional")} />
           </TextField>
 
           <div>
@@ -361,7 +369,7 @@ export function ShareDialog({
               isDisabled={createLink.isPending}
               onPress={() => void createPublicLink()}
             >
-              {t("share.createLink")}
+              {t("Crear enlace público")}
             </Button>
           </div>
 
@@ -374,15 +382,15 @@ export function ShareDialog({
                 onPress={async () => {
                   try {
                     await copyText(createdUrl);
-                    toast.success(t("share.linkCopied"));
+                    toast.success(t("Enlace copiado"));
                   } catch (error) {
-                    toast.error(t("share.linkCopyFailed"), {
+                    toast.error(t("No se pudo copiar el enlace"), {
                       description: userMessage(error),
                     });
                   }
                 }}
               >
-                {t("share.copy")}
+                {t("Copiar")}
               </Button>
             </div>
           ) : null}
@@ -400,18 +408,18 @@ export function ShareDialog({
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">
-                      {t("share.linkTitle", {
+                      {t("Public {role} link", {
                         role: t(link.permission === "read" ? "share.viewer" : "share.editor"),
                       })}
                     </p>
                     <p className="truncate text-xs text-muted">
-                      {link.passwordProtected ? `${t("share.protected")} · ` : ""}
+                      {link.passwordProtected ? `${t("Password protected")} · ` : ""}
                       {t(link.downloadCount === 1 ? "share.downloadsOne" : "share.downloadsMany", {
                         count: link.downloadCount,
                       })}
                       {link.expiresAt
-                        ? ` · ${t("share.expiresOn", { date: formatDateTime.format(new Date(link.expiresAt)) })}`
-                        : ` · ${t("share.noExpiration")}`}
+                        ? ` · ${t("Expires {date}", { date: formatDateTime.format(new Date(link.expiresAt)) })}`
+                        : ` · ${t("Sin vencimiento")}`}
                     </p>
                   </div>
                   <Chip variant="tertiary">
@@ -422,13 +430,13 @@ export function ShareDialog({
                       isIconOnly
                       size="sm"
                       variant="ghost"
-                      aria-label={t("share.linkActions")}
+                      aria-label={t("Acciones del enlace público")}
                     >
                       <span className="text-lg leading-none">⋯</span>
                     </Button>
                     <Dropdown.Popover className="min-w-40">
                       <Dropdown.Menu
-                        aria-label={t("share.linkActions")}
+                        aria-label={t("Acciones del enlace público")}
                         onAction={(key) => {
                           if (key !== "revoke") return;
                           void (async () => {
@@ -437,17 +445,17 @@ export function ShareDialog({
                                 params: { path: { shareId: link.id } },
                               });
                               await refreshLinks();
-                              toast.success(t("share.linkRevoked"));
+                              toast.success(t("Enlace público revocado"));
                             } catch (error) {
-                              toast.error(t("share.linkRevokeFailed"), {
+                              toast.error(t("No se pudo revocar el enlace público"), {
                                 description: userMessage(error),
                               });
                             }
                           })();
                         }}
                       >
-                        <Dropdown.Item id="revoke" textValue={t("share.revokeLink")}>
-                          <Label>{t("share.revokeLink")}</Label>
+                        <Dropdown.Item id="revoke" textValue={t("Revocar enlace")}>
+                          <Label>{t("Revocar enlace")}</Label>
                         </Dropdown.Item>
                       </Dropdown.Menu>
                     </Dropdown.Popover>
@@ -455,7 +463,9 @@ export function ShareDialog({
                 </div>
               ))
             ) : (
-              <p className="flex min-h-12 items-center text-xs text-muted">{t("share.noLinks")}</p>
+              <p className="flex min-h-12 items-center text-xs text-muted">
+                {t("No public links exist for this item.")}
+              </p>
             )}
           </div>
         </section>
@@ -480,10 +490,9 @@ function PermissionPicker({
   value: Permission;
   onChange: (value: Permission) => void;
 }) {
-  const { t } = useAppLocale();
   return (
     <Select
-      aria-label={t("share.permissionAria")}
+      aria-label={t("Permiso de acceso")}
       className="w-full"
       selectedKey={value}
       onSelectionChange={(key) => onChange(String(key) as Permission)}
@@ -494,11 +503,11 @@ function PermissionPicker({
       </Select.Trigger>
       <Select.Popover>
         <ListBox>
-          <ListBox.Item id="read" textValue={t("share.viewer")}>
-            {t("share.viewer")}
+          <ListBox.Item id="read" textValue={t("Lector")}>
+            {t("Lector")}
           </ListBox.Item>
-          <ListBox.Item id="edit" textValue={t("share.editor")}>
-            {t("share.editor")}
+          <ListBox.Item id="edit" textValue={t("Editor")}>
+            {t("Editor")}
           </ListBox.Item>
         </ListBox>
       </Select.Popover>
@@ -517,11 +526,10 @@ function ExpirationPicker({
   onModeChange: (value: ExpirationMode) => void;
   onDurationChange: (value: string) => void;
 }) {
-  const { t } = useAppLocale();
   return (
     <div className="grid gap-2">
       <Select
-        aria-label={t("share.expirationAria")}
+        aria-label={t("Vencimiento")}
         className="w-full"
         selectedKey={mode}
         onSelectionChange={(key) => onModeChange(String(key) as ExpirationMode)}
@@ -532,30 +540,30 @@ function ExpirationPicker({
         </Select.Trigger>
         <Select.Popover>
           <ListBox>
-            <ListBox.Item id="never" textValue={t("share.noExpiration")}>
-              {t("share.noExpiration")}
+            <ListBox.Item id="never" textValue={t("Sin vencimiento")}>
+              {t("Sin vencimiento")}
             </ListBox.Item>
-            <ListBox.Item id="1h" textValue={t("share.expHour")}>
-              {t("share.expHour")}
+            <ListBox.Item id="1h" textValue={t("1 hour")}>
+              {t("1 hour")}
             </ListBox.Item>
-            <ListBox.Item id="1d" textValue={t("share.expDay")}>
-              {t("share.expDay")}
+            <ListBox.Item id="1d" textValue={t("1 día")}>
+              {t("1 día")}
             </ListBox.Item>
-            <ListBox.Item id="7d" textValue={t("share.exp7")}>
-              {t("share.exp7")}
+            <ListBox.Item id="7d" textValue={t("7 días")}>
+              {t("7 días")}
             </ListBox.Item>
-            <ListBox.Item id="30d" textValue={t("share.exp30")}>
-              {t("share.exp30")}
+            <ListBox.Item id="30d" textValue={t("30 días")}>
+              {t("30 días")}
             </ListBox.Item>
-            <ListBox.Item id="custom" textValue={t("share.expCustom")}>
-              {t("share.expCustomMore")}
+            <ListBox.Item id="custom" textValue={t("Personalizado")}>
+              {t("Personalizado…")}
             </ListBox.Item>
           </ListBox>
         </Select.Popover>
       </Select>
       {mode === "custom" ? (
         <TextField value={duration} onChange={onDurationChange}>
-          <Input aria-label={t("share.customAria")} placeholder={t("share.customPlaceholder")} />
+          <Input aria-label={t("Custom expiration duration")} placeholder={t("1h, 1d12h, 1y")} />
         </TextField>
       ) : null}
     </div>
@@ -563,12 +571,12 @@ function ExpirationPicker({
 }
 
 function expirationLabel(mode: ExpirationMode, t: (key: string) => string) {
-  if (mode === "never") return t("share.noExpiration");
-  if (mode === "1h") return t("share.expHour");
-  if (mode === "1d") return t("share.expDay");
-  if (mode === "7d") return t("share.exp7");
-  if (mode === "30d") return t("share.exp30");
-  return t("share.expCustom");
+  if (mode === "never") return t("Sin vencimiento");
+  if (mode === "1h") return t("1 hour");
+  if (mode === "1d") return t("1 día");
+  if (mode === "7d") return t("7 días");
+  if (mode === "30d") return t("30 días");
+  return t("Personalizado");
 }
 
 function expirationDate(
@@ -579,24 +587,25 @@ function expirationDate(
   if (mode === "never") return undefined;
   const milliseconds = parseDuration(mode === "custom" ? duration : mode, t);
   const expiresAt = new Date(Date.now() + milliseconds);
-  if (!Number.isFinite(expiresAt.getTime())) throw new Error(t("share.tooLarge"));
+  if (!Number.isFinite(expiresAt.getTime()))
+    throw new Error(t("La duración del enlace es demasiado larga"));
   return expiresAt.toISOString();
 }
 
 function parseDuration(input: string, t: (key: string) => string): number {
   const value = input.trim();
-  if (!value) throw new Error(t("share.enterDuration"));
+  if (!value) throw new Error(t("Introduce una duración como 1h, 1d o 1y"));
 
   const pattern = /(\d+(?:\.\d+)?)(ms|s|m|h|d|w|M|y)/g;
   let total = 0;
   let offset = 0;
   for (const match of value.matchAll(pattern)) {
-    if (match.index !== offset) throw new Error(t("share.invalidDuration"));
+    if (match.index !== offset) throw new Error(t("Duración de vencimiento no válida"));
     total += Number(match[1]) * DURATION_UNITS[match[2]];
     offset = match.index + match[0].length;
   }
   if (offset !== value.length || !Number.isFinite(total) || total <= 0) {
-    throw new Error(t("share.invalidHint"));
+    throw new Error(t("Duración no válida. Prueba 1h, 1d, 1w o 1y"));
   }
   return total;
 }

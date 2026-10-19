@@ -138,6 +138,9 @@ enum InterfaceLocale {
   fr: "fr",
   de: "de",
   zhCN: "zh-CN",
+  it: "it",
+  ja: "ja",
+  ar: "ar",
 }
 
 model UploadPreferences {

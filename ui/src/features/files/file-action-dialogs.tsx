@@ -1,5 +1,5 @@
+import { t } from "@/lib/localization";
 import { Button, Input, Label, TextField } from "@heroui/react";
-import { useAppLocale } from "@/lib/locale";
 import type { FileEntry } from "../../api/types";
 import { AppDialog } from "../../components/dialogs/app-dialog";
 import { FilePreviewDialog } from "../../components/file-preview-dialog";
@@ -38,7 +38,6 @@ export function FileActionDialogs({
   previewFile?: FileEntry;
   onPreviewClose: () => void;
 }) {
-  const { t } = useAppLocale();
   const destinationTitle =
     destinationAction == null
       ? ""
@@ -56,17 +55,17 @@ export function FileActionDialogs({
         onOpenChange={(open) => {
           if (!open) onRenameClose();
         }}
-        title={t("dialog.renameTitle")}
+        title={t("Renombrar elemento")}
         isDismissable={!pending}
         isCloseDisabled={pending}
         size="md"
         footer={
           <>
             <Button variant="secondary" isDisabled={pending} onPress={onRenameClose}>
-              {t("dialog.cancel")}
+              {t("Cancelar")}
             </Button>
             <Button variant="primary" isDisabled={!renameName.trim() || pending} onPress={onRename}>
-              {t("dialog.rename")}
+              {t("Renombrar")}
             </Button>
           </>
         }
@@ -77,13 +76,13 @@ export function FileActionDialogs({
           value={renameName}
           onChange={onRenameNameChange}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && renameName.trim() && !pending) {
+            if (event.key === t("Enter") && renameName.trim() && !pending) {
               event.preventDefault();
               onRename();
             } else event.continuePropagation();
           }}
         >
-          <Label>{t("dialog.newName")}</Label>
+          <Label>{t("Nuevo nombre")}</Label>
           <Input />
         </TextField>
         {error && (
@@ -100,7 +99,7 @@ export function FileActionDialogs({
             if (!open) destinationAction.onClose();
           }}
           title={destinationTitle}
-          description={t("dialog.destinationHint")}
+          description={t("Elige la carpeta de destino.")}
           isDismissable={!pending}
           isCloseDisabled={pending}
         >

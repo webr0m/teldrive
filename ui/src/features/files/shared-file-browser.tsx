@@ -1,3 +1,4 @@
+import { t } from "@/lib/localization";
 import { Button, Input, Label, Spinner, TextField } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -21,7 +22,6 @@ import { FileBrowser, type FileBrowserView } from "@/features/files/file-browser
 import { useFileActions } from "@/features/files/mutations";
 import { ShareDialog } from "@/features/files/share-dialog";
 import { useUploadStore } from "@/features/uploads/store";
-import { useAppLocale } from "@/lib/locale";
 import { getQueryClient } from "@/lib/queryClient";
 
 type Permission = "read" | "edit";
@@ -62,7 +62,7 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
   const uploadTriggerRef = useRef<HTMLButtonElement>(null);
   const enqueue = useUploadStore((state) => state.enqueue);
   const fileActions = useFileActions();
-  const { t } = useAppLocale();
+
   const atRoot = !search.parentId;
 
   const sharedQuery = useQuery({
@@ -107,7 +107,7 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
       ? sharedWithMeQuery.isPending
       : sharedQuery.isPending
     : childrenQuery.isPending;
-  const rootLabel = mode === "with-me" ? t("nav.sharedWithMe") : t("nav.shared");
+  const rootLabel = mode === "with-me" ? t("Compartido conmigo") : t("Compartidos");
 
   const permissionFor = (file: FileEntry): Permission => {
     if (mode === "shared") return "edit";
@@ -137,9 +137,9 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
       setFolderName("");
       setFolderDialogOpen(false);
       await childrenQuery.refetch();
-      toast.success(t("files.folderCreated"));
+      toast.success(t("Carpeta creada"));
     } catch (error) {
-      toast.error(t("files.folderCreateFailed"), {
+      toast.error(t("No se pudo crear la carpeta"), {
         description: userMessage(error),
       });
     }
@@ -154,9 +154,9 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
       setSelectedKeys(new Set());
       if (atRoot) await refreshRoots();
       else await childrenQuery.refetch();
-      toast.success(t("files.renamed"));
+      toast.success(t("Elemento renombrado"));
     } catch (error) {
-      toast.error(t("files.renameFailed"), {
+      toast.error(t("No se pudo renombrar el elemento"), {
         description: userMessage(error),
       });
     }
@@ -175,7 +175,7 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
         }),
       );
     } catch (error) {
-      toast.error(t("files.trashFailed"), {
+      toast.error(t("No se pudieron mover los elementos a la papelera"), {
         description: userMessage(error),
       });
     }
@@ -238,7 +238,7 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
         }),
       );
     } catch (error) {
-      toast.error(t("files.unshareFailed"), {
+      toast.error(t("No se pudo dejar de compartir"), {
         description: userMessage(error),
       });
     }
@@ -296,7 +296,7 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
                   isIconOnly
                   size="sm"
                   variant="secondary"
-                  aria-label={t("files.newFolder")}
+                  aria-label={t("Nueva carpeta")}
                   isDisabled={fileActions.pending}
                   onPress={() => setFolderDialogOpen(true)}
                 >
@@ -306,7 +306,7 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
                   isIconOnly
                   size="sm"
                   variant="primary"
-                  aria-label={t("files.uploadFiles")}
+                  aria-label={t("Subir archivos")}
                   isDisabled={fileActions.pending}
                   onPress={() => uploadTriggerRef.current?.click()}
                 >
@@ -319,7 +319,7 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
                       if (list?.length) enqueue(Array.from(list), search.parentId, search.path);
                     }}
                   >
-                    <Button ref={uploadTriggerRef}>{t("files.chooseUpload")}</Button>
+                    <Button ref={uploadTriggerRef}>{t("Elegir archivos para subir")}</Button>
                   </FileTrigger>
                 </span>
               </>
@@ -330,14 +330,14 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
               <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
                 <div className="pointer-events-auto flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface/95 p-1.5 shadow-xl backdrop-blur @2xl/file-browser:rounded-full [&>button]:shrink-0">
                   <span className="shrink-0 rounded-full bg-accent/10 px-3 py-2 text-sm font-medium text-accent">
-                    {t("selection.count", { count: selectedCount })}
+                    {t("{count} selected", { count: selectedCount })}
                   </span>
                   {singleSelected && selectedWritable ? (
                     <Button
                       isIconOnly
                       size="sm"
                       variant="ghost"
-                      aria-label={t("selection.rename")}
+                      aria-label={t("Renombrar elemento seleccionado")}
                       isDisabled={fileActions.pending}
                       onPress={() => {
                         setRenameFile(singleSelected);
@@ -352,7 +352,7 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
                       isIconOnly
                       size="sm"
                       variant="ghost"
-                      aria-label={t("selection.share")}
+                      aria-label={t("Compartir elemento seleccionado")}
                       onPress={() => setShareFile(singleSelected)}
                     >
                       <LinkIcon className="size-4" />
@@ -363,7 +363,7 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
                       isIconOnly
                       size="sm"
                       variant="ghost"
-                      aria-label={t("selection.download")}
+                      aria-label={t("Descargar archivo seleccionado")}
                       onPress={() => startFileDownload(singleSelected)}
                     >
                       <DownloadIcon className="size-4" />
@@ -374,7 +374,7 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
                       isIconOnly
                       size="sm"
                       variant="danger"
-                      aria-label={t("selection.stopSharing")}
+                      aria-label={t("Dejar de compartir los elementos seleccionados")}
                       onPress={() => void stopSharingSelected()}
                     >
                       <LinkIcon className="size-4" />
@@ -384,18 +384,39 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
                       isIconOnly
                       size="sm"
                       variant="danger"
-                      aria-label={t("selection.trash")}
+                      aria-label={t("Mover elementos seleccionados a la papelera")}
                       isDisabled={fileActions.pending}
                       onPress={() => void trashSelected()}
                     >
                       <TrashIcon className="size-4" />
                     </Button>
                   ) : null}
+                  {mode === "with-me" && atRoot ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onPress={async () => {
+                        try {
+                          for (const file of selectedFiles)
+                            await fetchClient.POST("/v1/shared/spam/{fileId}", {
+                              params: { path: { fileId: file.id } },
+                            });
+                          setSelectedKeys(new Set());
+                          await refreshRoots();
+                          toast.success(t("Elementos enviados a Spam"));
+                        } catch (cause) {
+                          toast.error(userMessage(cause));
+                        }
+                      }}
+                    >
+                      {t("Marcar como spam")}
+                    </Button>
+                  ) : null}
                   <Button
                     isIconOnly
                     size="sm"
                     variant="ghost"
-                    aria-label={t("selection.clear")}
+                    aria-label={t("Borrar selección")}
                     onPress={() => setSelectedKeys(new Set())}
                   >
                     <CloseIcon className="size-4" />
@@ -407,9 +428,9 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
           emptyHint={
             atRoot
               ? mode === "with-me"
-                ? t("shared.emptyWithMe")
-                : t("shared.emptyShared")
-              : t("shared.emptyFolder")
+                ? t("Aquí aparecerán los archivos y carpetas compartidos contigo.")
+                : t("Aquí aparecerán los archivos y carpetas que has compartido.")
+              : t("Esta carpeta compartida está vacía.")
           }
         />
       </PageContent>
@@ -417,24 +438,24 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
       <AppDialog
         open={folderDialogOpen}
         onOpenChange={setFolderDialogOpen}
-        title={t("files.createFolder")}
+        title={t("Crear carpeta")}
         footer={
           <>
             <Button variant="secondary" onPress={() => setFolderDialogOpen(false)}>
-              {t("dialog.cancel")}
+              {t("Cancelar")}
             </Button>
             <Button
               variant="primary"
               isDisabled={!folderName.trim()}
               onPress={() => void createFolder()}
             >
-              {t("files.createFolder")}
+              {t("Crear carpeta")}
             </Button>
           </>
         }
       >
         <TextField value={folderName} onChange={setFolderName}>
-          <Label>{t("files.nameLabel")}</Label>
+          <Label>{t("Nombre")}</Label>
           <Input autoFocus />
         </TextField>
       </AppDialog>
@@ -444,24 +465,24 @@ export function SharedFileBrowser({ mode, search, navigate }: SharedFileBrowserP
         onOpenChange={(open) => {
           if (!open) setRenameFile(undefined);
         }}
-        title={t("dialog.renameTitle")}
+        title={t("Renombrar elemento")}
         footer={
           <>
             <Button variant="secondary" onPress={() => setRenameFile(undefined)}>
-              {t("dialog.cancel")}
+              {t("Cancelar")}
             </Button>
             <Button
               variant="primary"
               isDisabled={!renameName.trim()}
               onPress={() => void renameSelected()}
             >
-              {t("dialog.rename")}
+              {t("Renombrar")}
             </Button>
           </>
         }
       >
         <TextField value={renameName} onChange={setRenameName}>
-          <Label>{t("files.nameLabel")}</Label>
+          <Label>{t("Nombre")}</Label>
           <Input autoFocus />
         </TextField>
       </AppDialog>

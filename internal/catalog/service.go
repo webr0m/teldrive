@@ -241,7 +241,8 @@ func (s *Service) UpdatePartSizesMany(ctx context.Context, fileID uuid.UUID, siz
 		return fmt.Errorf("encode file part sizes: %w", err)
 	}
 	_, err = s.queries.UpdateFilePartSizesMany(ctx, sqlcgen.UpdateFilePartSizesManyParams{
-		FileID: dbtypes.UUID(fileID), Parts: encoded,
+		// Bind JSON as text so pgx's exec/simple modes do not encode it as bytea.
+		FileID: dbtypes.UUID(fileID), Parts: string(encoded),
 	})
 	if err != nil {
 		return fmt.Errorf("update file part sizes: %w", err)
@@ -470,7 +471,7 @@ func (s *Service) Restore(ctx context.Context, userID int64, fileID uuid.UUID) (
 		file, err := s.queries.GetFileForUser(ctx, sqlcgen.GetFileForUserParams{
 			FileID: dbtypes.UUID(fileID), UserID: userID,
 		})
-		if err == nil && file.Status == sqlcgen.FileStatusTrashed {
+		if err == nil && (file.Status == sqlcgen.FileStatusTrashed || file.Status == sqlcgen.FileStatusSpam) {
 			return nil, ErrConflict
 		}
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {

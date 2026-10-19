@@ -34,11 +34,19 @@ export default defineConfig({
         launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH },
       },
     },
+    {
+      name: "iphone",
+      use: {
+        ...devices["iPhone 13"],
+        browserName: "webkit",
+        launchOptions: { executablePath: process.env.PLAYWRIGHT_WEBKIT_EXECUTABLE_PATH },
+      },
+    },
   ],
   webServer: externalBaseURL
     ? undefined
     : {
-        command: "./node_modules/.bin/vite --host 127.0.0.1 --port 4173",
+        command: "bun run dev --host 127.0.0.1 --port 4173",
         url: "http://127.0.0.1:4173",
         reuseExistingServer:
           !process.env.CI && process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER !== "false",

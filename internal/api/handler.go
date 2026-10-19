@@ -6,12 +6,14 @@ import (
 	"github.com/tgdrive/teldrive/v2/internal/api/gen"
 	"github.com/tgdrive/teldrive/v2/internal/authn"
 	"github.com/tgdrive/teldrive/v2/internal/bots"
+	"github.com/tgdrive/teldrive/v2/internal/casting"
 	"github.com/tgdrive/teldrive/v2/internal/catalog"
 	"github.com/tgdrive/teldrive/v2/internal/channels"
 	"github.com/tgdrive/teldrive/v2/internal/events"
 	"github.com/tgdrive/teldrive/v2/internal/fileops"
 	"github.com/tgdrive/teldrive/v2/internal/health"
 	"github.com/tgdrive/teldrive/v2/internal/jobs"
+	"github.com/tgdrive/teldrive/v2/internal/media"
 	"github.com/tgdrive/teldrive/v2/internal/shares"
 	"github.com/tgdrive/teldrive/v2/internal/telegramstore"
 	"github.com/tgdrive/teldrive/v2/internal/transfer"
@@ -21,6 +23,9 @@ import (
 var ErrOperationUnavailable = errors.New("operation is not implemented")
 
 type Handler struct {
+	Media                      *media.Service
+	Casting                    *casting.Service
+	playback                   playbackRegistry
 	Catalog                    *catalog.Service
 	Uploads                    *uploads.Service
 	UploadPipeline             *transfer.Pipeline

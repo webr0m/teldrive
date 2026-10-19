@@ -47,7 +47,9 @@ type Querier interface {
 	DeleteFileViewState(ctx context.Context, arg DeleteFileViewStateParams) (int64, error)
 	DeleteUploadPartsForCleanup(ctx context.Context, parts []byte) (int64, error)
 	DeleteUserEventsBefore(ctx context.Context, cutoff pgtype.Timestamptz) (int64, error)
+	DismissIncomingSpam(ctx context.Context, arg DismissIncomingSpamParams) error
 	EnsureUserPreferences(ctx context.Context, userID int64) error
+	ExpireIncomingSpam(ctx context.Context, reportedBefore pgtype.Timestamptz) error
 	ExpireUploadSessions(ctx context.Context) ([]*UploadSession, error)
 	FinalizeUploadExpectedSize(ctx context.Context, arg FinalizeUploadExpectedSizeParams) (*UploadSession, error)
 	FindResumableUploadSessions(ctx context.Context, arg FindResumableUploadSessionsParams) ([]*UploadSession, error)
@@ -116,6 +118,7 @@ type Querier interface {
 	ListFileSubtreeIDs(ctx context.Context, arg ListFileSubtreeIDsParams) ([]pgtype.UUID, error)
 	ListFiles(ctx context.Context, arg ListFilesParams) ([]*File, error)
 	ListFilesAdvanced(ctx context.Context, arg ListFilesAdvancedParams) ([]*File, error)
+	ListIncomingSpam(ctx context.Context, granteeID int64) ([]*ListIncomingSpamRow, error)
 	ListRecentStorageActivity(ctx context.Context, arg ListRecentStorageActivityParams) ([]*ListRecentStorageActivityRow, error)
 	ListReferencedMessageIDs(ctx context.Context, arg ListReferencedMessageIDsParams) ([]int64, error)
 	ListSessions(ctx context.Context, arg ListSessionsParams) ([]*Session, error)
@@ -151,6 +154,7 @@ type Querier interface {
 	MarkFileIDsDeletionPending(ctx context.Context, arg MarkFileIDsDeletionPendingParams) error
 	MarkFileSubtreeDeletionPending(ctx context.Context, arg MarkFileSubtreeDeletionPendingParams) error
 	MarkFileSubtreesDeletionPending(ctx context.Context, arg MarkFileSubtreesDeletionPendingParams) error
+	MarkIncomingSpam(ctx context.Context, arg MarkIncomingSpamParams) (int64, error)
 	MarkUploadCompleting(ctx context.Context, arg MarkUploadCompletingParams) (*UploadSession, error)
 	MarkUploadPartFailed(ctx context.Context, arg MarkUploadPartFailedParams) (*UploadPart, error)
 	MarkUploadPartStored(ctx context.Context, arg MarkUploadPartStoredParams) (*UploadPart, error)
@@ -167,7 +171,9 @@ type Querier interface {
 	ResolveActiveChildFolder(ctx context.Context, arg ResolveActiveChildFolderParams) (pgtype.UUID, error)
 	ResolveFileAccessMany(ctx context.Context, arg ResolveFileAccessManyParams) ([]*ResolveFileAccessManyRow, error)
 	RestoreFileSubtree(ctx context.Context, arg RestoreFileSubtreeParams) ([]*File, error)
+	RestoreIncomingSpam(ctx context.Context, arg RestoreIncomingSpamParams) (int64, error)
 	RevokeAPIKey(ctx context.Context, arg RevokeAPIKeyParams) (int64, error)
+	RevokeAccessForFileSubtrees(ctx context.Context, arg RevokeAccessForFileSubtreesParams) error
 	RevokeActiveSharesForFile(ctx context.Context, arg RevokeActiveSharesForFileParams) error
 	RevokeAllAPIKeysForUser(ctx context.Context, userID int64) (int64, error)
 	RevokeAllSessionsForUser(ctx context.Context, userID int64) (int64, error)
@@ -182,6 +188,7 @@ type Querier interface {
 	SearchUsersForShare(ctx context.Context, arg SearchUsersForShareParams) ([]*User, error)
 	SelectChannel(ctx context.Context, arg SelectChannelParams) (*Channel, error)
 	SetUserDisabled(ctx context.Context, arg SetUserDisabledParams) (*User, error)
+	SpamFileSubtrees(ctx context.Context, arg SpamFileSubtreesParams) ([]*File, error)
 	SumFilePartSizes(ctx context.Context, fileID pgtype.UUID) (*SumFilePartSizesRow, error)
 	TouchAPIKey(ctx context.Context, id pgtype.UUID) error
 	TouchSession(ctx context.Context, sessionID pgtype.UUID) error
@@ -189,6 +196,7 @@ type Querier interface {
 	TrashFileSubtrees(ctx context.Context, arg TrashFileSubtreesParams) ([]*File, error)
 	TryAdvisoryLock(ctx context.Context, lockID int64) (bool, error)
 	TryAdvisoryLocks(ctx context.Context, lockIds []int64) ([]*TryAdvisoryLocksRow, error)
+	UpdateBotIdentity(ctx context.Context, arg UpdateBotIdentityParams) (*Bot, error)
 	UpdateBotSession(ctx context.Context, arg UpdateBotSessionParams) (int64, error)
 	UpdateChannelHealth(ctx context.Context, arg UpdateChannelHealthParams) (*Channel, error)
 	UpdateFileAccessGrant(ctx context.Context, arg UpdateFileAccessGrantParams) (*FileAccessGrant, error)

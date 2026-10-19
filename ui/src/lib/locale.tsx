@@ -20,6 +20,9 @@ const STORAGE_KEY = "teldrive-locale";
 
 function detectLocale(): AppLocale {
   try {
+    const custom = window.localStorage.getItem("teldrive-language") ?? "es";
+    if (custom === "pt") return "pt-BR";
+    if (isAppLocale(custom)) return custom;
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (isAppLocale(stored)) return stored;
   } catch {
@@ -39,6 +42,7 @@ function detectLocale(): AppLocale {
 function writeStoredLocale(locale: AppLocale) {
   try {
     window.localStorage.setItem(STORAGE_KEY, locale);
+    window.localStorage.setItem("teldrive-language", locale === "pt-BR" ? "pt" : locale);
   } catch {
     // Ignore write failures; the locale still applies for this session.
   }
@@ -46,23 +50,25 @@ function writeStoredLocale(locale: AppLocale) {
 
 const LocaleContext = createContext<{
   locale: AppLocale;
-  setLocale: (locale: AppLocale) => void;
+  setLocale: (locale: AppLocale) => Promise<void>;
   t: (key: string, vars?: Record<string, string | number>) => string;
 }>({
-  locale: "en",
-  setLocale: () => {},
+  locale: "es",
+  setLocale: async () => {},
   t: (key) => key,
 });
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const serverLocale = usePreferences()?.appearance.locale;
-  const { mutate: updatePreferences } = useUpdatePreferences();
+  const { mutateAsync: updatePreferences } = useUpdatePreferences();
   const [cachedLocale, setCachedLocale] = useState<AppLocale>(detectLocale);
   // An absent server locale means "auto-detect", so the cached/browser value applies.
   const locale = serverLocale ?? cachedLocale;
 
   useEffect(() => {
     document.documentElement.lang = locale;
+    document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
+    writeStoredLocale(locale);
   }, [locale]);
 
   // Keep the last server value so logout leaves the language in place.
@@ -73,10 +79,10 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   }, [serverLocale]);
 
   const setLocale = useCallback(
-    (next: AppLocale) => {
+    async (next: AppLocale) => {
       setCachedLocale(next);
       writeStoredLocale(next);
-      if (hasCachedPreferences()) updatePreferences({ appearance: { locale: next } });
+      if (hasCachedPreferences()) await updatePreferences({ appearance: { locale: next } });
     },
     [updatePreferences],
   );

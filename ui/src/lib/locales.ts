@@ -1,4 +1,4 @@
-export type AppLocale = "en" | "es" | "pt-BR" | "ru" | "fr" | "de" | "zh-CN";
+export type AppLocale = "en" | "es" | "pt-BR" | "ru" | "fr" | "de" | "zh-CN" | "it" | "ja" | "ar";
 
 export const APP_LOCALES: { code: AppLocale; label: string; nativeLabel: string }[] = [
   { code: "en", label: "English", nativeLabel: "English" },
@@ -8,6 +8,9 @@ export const APP_LOCALES: { code: AppLocale; label: string; nativeLabel: string 
   { code: "fr", label: "French", nativeLabel: "Français" },
   { code: "de", label: "German", nativeLabel: "Deutsch" },
   { code: "zh-CN", label: "Chinese (Simplified)", nativeLabel: "简体中文" },
+  { code: "it", label: "Italian", nativeLabel: "Italiano" },
+  { code: "ja", label: "Japanese", nativeLabel: "日本語" },
+  { code: "ar", label: "Arabic", nativeLabel: "العربية" },
 ];
 
 export function isAppLocale(value: unknown): value is AppLocale {
@@ -15,14 +18,14 @@ export function isAppLocale(value: unknown): value is AppLocale {
 }
 
 export function translate(locale: AppLocale, key: string, vars?: Record<string, string | number>) {
-  const template = STRINGS[locale][key] ?? STRINGS.en[key] ?? key;
+  const template = STRINGS[locale]?.[key] ?? STRINGS.en?.[key] ?? key;
   if (!vars) return template;
   return template.replace(/\{(\w+)\}/g, (_, name: string) =>
     vars[name] === undefined ? `{${name}}` : String(vars[name]),
   );
 }
 
-export const STRINGS: Record<AppLocale, Record<string, string>> = {
+export const STRINGS: Record<string, Record<string, string>> = {
   en: {
     "nav.files": "Files",
     "nav.recent": "Recent",
@@ -6980,3 +6983,8 @@ export const STRINGS: Record<AppLocale, Record<string, string>> = {
     "jobs.cronCustom": "自定义计划：{expr}",
   },
 };
+
+// Entries for features retained by the desktop edition.
+for (const [locale, values] of Object.entries(STRINGS)) {
+  Object.assign(values, { "nav.spam": "Spam", "settings.item.rclone": "Rclone", "settings.item.info": locale === "es" ? "Información" : "Information" });
+}

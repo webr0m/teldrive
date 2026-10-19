@@ -103,6 +103,7 @@ const (
 	FileStatusActive          FileStatus = "active"
 	FileStatusTrashed         FileStatus = "trashed"
 	FileStatusDeletionPending FileStatus = "deletion_pending"
+	FileStatusSpam            FileStatus = "spam"
 )
 
 func (e *FileStatus) Scan(src interface{}) error {
@@ -435,6 +436,7 @@ type Bot struct {
 	RetryAfter          pgtype.Timestamptz `json:"retry_after"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	Name                pgtype.Text        `json:"name"`
 }
 
 type BotSelectionCounter struct {
@@ -551,6 +553,12 @@ type IdempotencyKey struct {
 	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
 	ExpiresAt          pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+}
+
+type IncomingSpam struct {
+	GranteeID  int64              `json:"grantee_id"`
+	FileID     pgtype.UUID        `json:"file_id"`
+	ReportedAt pgtype.Timestamptz `json:"reported_at"`
 }
 
 type Session struct {

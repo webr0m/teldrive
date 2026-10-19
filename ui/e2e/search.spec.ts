@@ -128,7 +128,7 @@ test("integrated search filters remain available in empty and invalid search sta
     });
     await filters.click();
     await expect(page.getByRole("heading", { name: "Refine your search" })).toBeVisible();
-    await expect(page.getByRole("progressbar")).toHaveCount(0);
+    await expect(page.locator("main").getByRole("progressbar")).toHaveCount(0);
   }
 });
 
@@ -361,7 +361,7 @@ test("a recursive URL without its folder is recoverable and never requests or sp
   await page.goto("/search?q=report&scope=recursive");
   await expect(page.getByText("Choose a folder to search recursively")).toBeVisible();
   await expect(page.getByRole("button", { name: "Choose folder" })).toBeVisible();
-  await expect(page.getByRole("progressbar")).toHaveCount(0);
+  await expect(page.locator("main").getByRole("progressbar")).toHaveCount(0);
   expect(listCalls).toBe(0);
 });
 
@@ -509,7 +509,7 @@ test("search selection exposes bounded actions and renames the selected result",
   const row = page.getByRole("row", { name: /alpha\.txt/ });
   await row.click();
   await expect(page.getByText("1 selected", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Cut selected items" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Cut selected elements" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Duplicate selected item" })).toHaveCount(0);
   await page.getByRole("button", { name: "Rename selected item" }).click();
   await page.getByRole("textbox", { name: "New name" }).fill("renamed.txt");
@@ -533,7 +533,7 @@ test("failed copies retain retry context and pending confirmation cannot submit 
     if (attempts === 1)
       return route.fulfill({
         status: 409,
-        json: { error: { code: "conflict", message: "Copy failed" } },
+        json: { error: { code: "conflict", message: "No se pudo copiar" } },
       });
     await pending;
     return route.fulfill({ json: resultFile });
@@ -692,12 +692,12 @@ test("search error and empty states never claim that a folder is empty", async (
     fail
       ? route.fulfill({
           status: 422,
-          json: { error: { code: "invalid_request", message: "Search unavailable" } },
+          json: { error: { code: "invalid_request", message: "Búsqueda no disponible" } },
         })
       : route.fulfill({ json: { items: [] } }),
   );
   await page.goto("/search?q=missing");
-  await expect(page.getByRole("alert")).toContainText("Search could not be completed");
+  await expect(page.getByRole("alert")).toContainText("The search could not be completed.");
   await expect(page.getByText("This folder is empty", { exact: true })).toHaveCount(0);
   fail = false;
   await page.getByRole("button", { name: "Retry", exact: true }).click();
@@ -724,3 +724,5 @@ test("search waits for IME composition to finish before changing the URL", async
   await page.clock.runFor(300);
   await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("報告");
 });
+
+test.beforeEach(async ({page}) => {await page.addInitScript(() => localStorage.setItem("teldrive-language", "en"));});

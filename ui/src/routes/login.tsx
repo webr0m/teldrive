@@ -1,3 +1,5 @@
+import { t } from "@/lib/localization";
+import { LanguageSelector } from "@/lib/localization";
 import { Button, Card, Description, Input, Label, Spinner, Tabs, TextField } from "@heroui/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -9,7 +11,6 @@ import ShieldIcon from "~icons/gravity-ui/shield-check";
 import { $api } from "@/api/client";
 import { userMessage } from "@/api/errors";
 import { newIdempotencyKey } from "@/features/shared/idempotency";
-import { useAppLocale } from "@/lib/locale";
 import { useTimeOnlyFormatter } from "@/lib/format";
 import { getQueryClient } from "@/lib/queryClient";
 import { currentUserQueryOptions } from "@/auth/queries";
@@ -41,7 +42,7 @@ function isSession(value: unknown): value is CookieSession {
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { t } = useAppLocale();
+
   const formatTime = useTimeOnlyFormatter();
   const { redirect } = Route.useSearch();
   const [method, setMethod] = useState<"phone" | "qr">("phone");
@@ -65,7 +66,7 @@ function LoginPage() {
     const qc = getQueryClient();
     await qc.invalidateQueries({ queryKey: query.queryKey });
     await qc.ensureQueryData(query);
-    toast.success(t("login.signedIn"));
+    toast.success(t("Sesión iniciada en Teldrive"));
     await navigate({ to: redirect, replace: true });
   };
 
@@ -95,7 +96,7 @@ function LoginPage() {
       });
       if (isSession(result)) await finish();
     } catch (error) {
-      toast.error(t("login.signInFailed"), { description: userMessage(error) });
+      toast.error(t("No se pudo iniciar sesión con Telegram"), { description: userMessage(error) });
     }
   };
 
@@ -141,14 +142,15 @@ function LoginPage() {
             if (!active) return;
             active = false;
             window.clearInterval(timer);
-            toast.error(t("login.qrStopped"), { description: userMessage(error) });
+            toast.error(t("QR sign-in stopped"), { description: userMessage(error) });
           } finally {
             polling = false;
           }
         }, 2500);
       })
       .catch((error) => {
-        if (active) toast.error(t("login.qrFailed"), { description: userMessage(error) });
+        if (active)
+          toast.error(t("Unable to create QR sign-in"), { description: userMessage(error) });
       });
     return () => {
       active = false;
@@ -164,17 +166,28 @@ function LoginPage() {
         </div>
         <div className="my-auto max-w-xl">
           <p className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-accent">
-            {t("login.kicker")}
+            {t("Teldrive")}
           </p>
-          <h1 className="text-4xl font-semibold tracking-tight">{t("login.heroTitle")}</h1>
-          <p className="mt-4 max-w-lg text-sm leading-6 text-muted">{t("login.heroDescription")}</p>
+          <h1 className="text-4xl font-semibold tracking-tight">
+            {t("Tu unidad en la nube respaldada por Telegram.")}
+          </h1>
+          <p className="mt-4 max-w-lg text-sm leading-6 text-muted">
+            {t(
+              "Manage files, uploads, background jobs, channels, bots, sessions, and API access from one focused interface.",
+            )}
+          </p>
         </div>
       </section>
-      <section className="flex items-center justify-center p-4 sm:p-8 lg:p-12">
+      <section className="relative flex items-center justify-center p-4 pt-24 sm:p-8 sm:pt-24 lg:p-12 lg:pt-24">
+        <div className="absolute top-5 right-5">
+          <LanguageSelector />
+        </div>
         <Card className="w-full max-w-md border border-border bg-surface/90 shadow-xl">
           <Card.Header className="block px-6 pt-6">
-            <Card.Title>{t("login.cardTitle")}</Card.Title>
-            <Card.Description>{t("login.cardDescription")}</Card.Description>
+            <Card.Title>{t("Iniciar sesión con Telegram")}</Card.Title>
+            <Card.Description>
+              {t("API keys are reserved for rclone and external clients.")}
+            </Card.Description>
           </Card.Header>
           <Card.Content className="space-y-5 px-6 pb-6">
             <Tabs
@@ -185,31 +198,33 @@ function LoginPage() {
               }}
             >
               <Tabs.ListContainer>
-                <Tabs.List aria-label={t("login.methodLabel")}>
+                <Tabs.List aria-label={t("Método de inicio de sesión")}>
                   <Tabs.Tab id="phone">
-                    <PhoneIcon className="size-4" /> {t("login.phoneTab")}
+                    <PhoneIcon className="size-4" /> {` ${t("Teléfono")}`}
                   </Tabs.Tab>
                   <Tabs.Tab id="qr">
-                    <QrIcon className="size-4" /> {t("login.qrTab")}
+                    <QrIcon className="size-4" /> {t("Código QR")}
                   </Tabs.Tab>
                 </Tabs.List>
               </Tabs.ListContainer>
               <Tabs.Panel id="phone" className="space-y-4 pt-4">
                 {step === "phone" && (
                   <TextField className="grid gap-1">
-                    <Label>{t("login.phoneLabel")}</Label>
+                    <Label>{t("Número de teléfono de Telegram")}</Label>
                     <Input
                       autoFocus
                       placeholder="+12025550123"
                       value={phone}
                       onChange={(event) => setPhone(event.target.value)}
                     />
-                    <Description>{t("login.phoneHint")}</Description>
+                    <Description>
+                      {t("Incluye el prefijo del país, por ejemplo +56912345678.")}
+                    </Description>
                   </TextField>
                 )}
                 {step === "code" && (
                   <TextField className="grid gap-1">
-                    <Label>{t("login.codeLabel")}</Label>
+                    <Label>{t("Código de Telegram")}</Label>
                     <Input
                       autoFocus
                       inputMode="numeric"
@@ -220,7 +235,7 @@ function LoginPage() {
                 )}
                 {step === "password" && (
                   <TextField className="grid gap-1">
-                    <Label>{t("login.passwordLabel")}</Label>
+                    <Label>{t("Contraseña de verificación en dos pasos")}</Label>
                     <Input
                       autoFocus
                       type="password"
@@ -238,7 +253,7 @@ function LoginPage() {
                   }
                 >
                   {pending ? <Spinner size="sm" /> : <ShieldIcon className="size-4" />}
-                  {step === "phone" ? t("login.sendCode") : t("login.verify")}
+                  {step === "phone" ? t("Enviar código") : t("Verificar e iniciar sesión")}
                 </Button>
                 {step !== "phone" && (
                   <Button
@@ -251,24 +266,29 @@ function LoginPage() {
                       setPassword("");
                     }}
                   >
-                    {t("login.startAgain")}
+                    {t("Empezar de nuevo")}
                   </Button>
                 )}
               </Tabs.Panel>
               <Tabs.Panel id="qr" className="space-y-4 pt-4">
                 <div className="grid min-h-72 place-items-center rounded-xl border border-border bg-white p-5 text-black">
                   {qrUrl ? (
-                    <QRCodeSVG value={qrUrl} size={220} aria-label={t("login.qrAria")} />
+                    <QRCodeSVG
+                      value={qrUrl}
+                      size={220}
+                      aria-label={t("Código QR de inicio de sesión en Telegram")}
+                    />
                   ) : (
                     <Spinner size="lg" />
                   )}
                 </div>
                 <div className="text-center">
-                  <p className="font-medium">{t("login.scanTitle")}</p>
-                  <p className="mt-1 text-xs text-muted">{t("login.scanHint")}</p>
+                  <p className="font-medium">{t("Escanear con Telegram")}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    {t("Ajustes → Dispositivos → Vincular dispositivo")}
+                  </p>
                   <p className="mt-2 text-xs text-muted">
-                    {t("login.expires")}{" "}
-                    {qrExpiry ? formatTime.format(new Date(qrExpiry)) : t("login.qrSoon")}
+                    {t("Expires")} {qrExpiry ? formatTime.format(new Date(qrExpiry)) : t("soon")}
                   </p>
                 </div>
               </Tabs.Panel>

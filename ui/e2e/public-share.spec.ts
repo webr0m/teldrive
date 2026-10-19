@@ -105,3 +105,5 @@ test("opening a single-file share requests the root content URL with a single /a
     await server.close();
   }
 });
+
+test.beforeEach(async ({page}) => {await page.addInitScript(() => localStorage.setItem("teldrive-language", "en"));});

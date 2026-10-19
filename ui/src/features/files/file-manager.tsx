@@ -1,3 +1,4 @@
+import { t } from "@/lib/localization";
 import { Button, Dropdown, Input, Label, TextField } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -24,7 +25,6 @@ import CloseIcon from "~icons/gravity-ui/xmark";
 import { useFileClipboardStore } from "./clipboard-store";
 import { absoluteFileDownloadUrl, copyText, startFileDownload } from "./download";
 import { FileActionDialogs } from "./file-action-dialogs";
-import { useAppLocale } from "@/lib/locale";
 import { FileBrowser } from "./file-browser";
 import { FileSelectionToolbar } from "./file-selection-toolbar";
 import { FileSortControls } from "./file-sort-controls";
@@ -149,7 +149,6 @@ export function FileManagerPage({
   const enqueue = useUploadStore((state) => state.enqueue);
   const fileActions = useFileActions();
   const pending = operationPending || fileActions.pending;
-  const { t } = useAppLocale();
 
   const clipboardMode = useFileClipboardStore((state) => state.mode);
   const clipboardItems = useFileClipboardStore((state) => state.items);
@@ -304,9 +303,9 @@ export function FileManagerPage({
       await fileActions.createFolder(name, activeLocation.parentId);
       setFolderName("");
       setFolderDialogOpen(false);
-      toast.success(t("files.folderCreated"));
+      toast.success(t("Carpeta creada"));
     } catch (error) {
-      toast.error(t("files.folderCreateFailed"), { description: userMessage(error) });
+      toast.error(t("No se pudo crear la carpeta"), { description: userMessage(error) });
     }
   };
 
@@ -339,7 +338,7 @@ export function FileManagerPage({
     await performAction(
       () => fileActions.bulkTrash(ids),
       t(ids.length === 1 ? "files.trashedOne" : "files.trashedMany", { count: ids.length }),
-      t("files.trashFailed"),
+      t("Items could not be moved to trash"),
       () => setPaneSelectedKeys(pane, new Set()),
     );
   };
@@ -365,7 +364,7 @@ export function FileManagerPage({
         : t(ids.length === 1 ? "manager.bookmarkedOne" : "manager.bookmarkedMany", {
             count: ids.length,
           }),
-      search.bookmarked ? t("manager.unbookmarkFailed") : t("manager.bookmarkFailed"),
+      search.bookmarked ? t("Bookmarks could not be removed") : t("Items could not be bookmarked"),
       () => setPaneSelectedKeys(pane, new Set()),
     );
   };
@@ -374,8 +373,8 @@ export function FileManagerPage({
     if (!renameFile || !renameName.trim() || pending) return;
     await performAction(
       () => fileActions.rename(renameFile, renameName.trim()),
-      t("files.renamed"),
-      t("files.renameFailed"),
+      t("Elemento renombrado"),
+      t("No se pudo renombrar el elemento"),
       () => {
         setRenameFile(undefined);
         setRenameName("");
@@ -383,6 +382,21 @@ export function FileManagerPage({
       },
       true,
     );
+  };
+
+  const duplicateFile = async (file: FileEntry, pane: PaneId) => {
+    try {
+      await fileActions.copy(file, paneLocation(pane).parentId, `${file.name} copia`, "rename");
+      setPaneSelectedKeys(pane, new Set());
+      toast.success(t("Elemento duplicado"));
+    } catch (error) {
+      toast.error(t("No se pudo duplicar el elemento"), { description: userMessage(error) });
+    }
+  };
+
+  const _duplicateSelected = async (pane: PaneId) => {
+    const selected = paneSelectedFiles(pane);
+    if (selected.length === 1) await duplicateFile(selected[0], pane);
   };
 
   const transferSelected = async (parentId?: string) => {
@@ -407,7 +421,9 @@ export function FileManagerPage({
             : "manager.movedMany",
         { count: target.files.length },
       ),
-      target.mode === "copy" ? t("manager.copyFailed") : t("manager.moveFailed"),
+      target.mode === "copy"
+        ? t("No se pudieron copiar los elementos")
+        : t("No se pudieron mover los elementos seleccionados"),
       () => {
         setDestination(undefined);
         setPaneSelectedKeys(target.pane, new Set());
@@ -436,7 +452,7 @@ export function FileManagerPage({
     if (!clipboardMode || clipboardItems.length === 0) return;
     const location = paneLocation(pane);
     if (clipboardMode === "cut" && clipboardSourceParentId === location.parentId) {
-      toast.info(t("manager.alreadyHere"));
+      toast.info(t("Los elementos ya están en esta carpeta"));
       return;
     }
     try {
@@ -463,7 +479,9 @@ export function FileManagerPage({
         setPasteConflictPane(pane);
         return;
       }
-      toast.error(t("manager.pasteFailed"), { description: userMessage(error) });
+      toast.error(t("No se pudieron pegar los elementos del portapapeles"), {
+        description: userMessage(error),
+      });
     }
   };
 
@@ -524,7 +542,7 @@ export function FileManagerPage({
         setRenameName(singleSelectedFile.name);
         return;
       }
-      if (event.key === "Delete" && selectedIds.length > 0) {
+      if (event.key === t("Borrar") && selectedIds.length > 0) {
         event.preventDefault();
         void trashSelected(pane);
         return;
@@ -594,7 +612,9 @@ export function FileManagerPage({
         }),
       );
     } catch (error) {
-      toast.error(t("manager.linksCopyFailed"), { description: userMessage(error) });
+      toast.error(t("No se pudieron copiar los enlaces de descarga"), {
+        description: userMessage(error),
+      });
     }
   };
 
@@ -609,8 +629,8 @@ export function FileManagerPage({
           status={
             activeSearch && !missingFolder && !invalidDates
               ? primaryFileQuery.isFetching
-                ? t("search.updating")
-                : t("search.loaded", { count: primaryFiles.length })
+                ? t("Actualizando resultados…")
+                : t("{count} loaded", { count: primaryFiles.length })
               : undefined
           }
         />
@@ -629,7 +649,7 @@ export function FileManagerPage({
             isIconOnly
             size="sm"
             variant="secondary"
-            aria-label={t("manager.openSplit")}
+            aria-label={t("Abrir vista dividida")}
             onPress={openSplitView}
           >
             <SplitIcon className="size-4" />
@@ -639,7 +659,7 @@ export function FileManagerPage({
             isIconOnly
             size="sm"
             variant="ghost"
-            aria-label={t("manager.closeSplit")}
+            aria-label={t("Cerrar vista dividida")}
             onPress={closeSplitView}
           >
             <SplitIcon className="size-4" />
@@ -649,7 +669,7 @@ export function FileManagerPage({
           isIconOnly
           size="sm"
           variant="secondary"
-          aria-label={t("files.newFolder")}
+          aria-label={t("Nueva carpeta")}
           onPress={() => {
             setActivePane(pane);
             setFolderDialogOpen(true);
@@ -658,12 +678,12 @@ export function FileManagerPage({
           <PlusIcon className="size-4" />
         </Button>
         <Dropdown>
-          <Button isIconOnly size="sm" variant="primary" aria-label={t("manager.upload")}>
+          <Button isIconOnly size="sm" variant="primary" aria-label={t("Subir")}>
             <UploadIcon className="size-4" />
           </Button>
           <Dropdown.Popover className="min-w-52">
             <Dropdown.Menu
-              aria-label={t("manager.upload")}
+              aria-label={t("Subir")}
               onAction={(key) => {
                 setActivePane(pane);
                 if (key === "files") uploadFilesTriggerRef.current?.click();
@@ -671,18 +691,18 @@ export function FileManagerPage({
                 if (key === "background") setBackgroundUploadOpen(true);
               }}
             >
-              <Dropdown.Item id="files" textValue={t("files.uploadFiles")}>
+              <Dropdown.Item id="files" textValue={t("Subir archivos")}>
                 <FileIcon className="size-4" />
-                <Label>{t("files.uploadFiles")}</Label>
+                <Label>{t("Subir archivos")}</Label>
               </Dropdown.Item>
-              <Dropdown.Item id="folder" textValue={t("files.uploadFolder")}>
+              <Dropdown.Item id="folder" textValue={t("Subir carpeta")}>
                 <FolderIcon className="size-4" />
-                <Label>{t("files.uploadFolder")}</Label>
+                <Label>{t("Subir carpeta")}</Label>
               </Dropdown.Item>
               {canLocalImport ? (
-                <Dropdown.Item id="background" textValue={t("uploads.bgTitle")}>
+                <Dropdown.Item id="background" textValue={t("Subida en segundo plano")}>
                   <UploadIcon className="size-4" />
-                  <Label>{t("uploads.bgTitle")}</Label>
+                  <Label>{t("Subida en segundo plano")}</Label>
                 </Dropdown.Item>
               ) : null}
             </Dropdown.Menu>
@@ -695,7 +715,7 @@ export function FileManagerPage({
               if (list?.length) enqueue(Array.from(list), location.parentId, location.path);
             }}
           >
-            <Button ref={uploadFilesTriggerRef}>{t("files.chooseUpload")}</Button>
+            <Button ref={uploadFilesTriggerRef}>{t("Elegir archivos para subir")}</Button>
           </FileTrigger>
           <FileTrigger
             acceptDirectory
@@ -704,7 +724,7 @@ export function FileManagerPage({
               if (list?.length) enqueue(Array.from(list), location.parentId, location.path);
             }}
           >
-            <Button ref={uploadFolderTriggerRef}>{t("files.chooseFolder")}</Button>
+            <Button ref={uploadFolderTriggerRef}>{t("Elegir carpeta para subir")}</Button>
           </FileTrigger>
         </span>
       </>
@@ -795,6 +815,14 @@ export function FileManagerPage({
           setActionError(undefined);
           setDestination({ mode: "move", files: [...selectedFiles], pane });
         }}
+        onSpam={() =>
+          void performAction(
+            () => fileActions.bulkSpam(paneSelectedFiles(pane).map((file) => file.id)),
+            t("Elementos enviados a Spam; se retiraron sus enlaces compartidos"),
+            t("No se pudieron marcar los elementos como spam"),
+            () => setPaneSelectedKeys(pane, new Set()),
+          )
+        }
         onTrash={() => void trashSelected(pane)}
         onClear={() => setPaneSelectedKeys(pane, new Set())}
       />
@@ -812,12 +840,12 @@ export function FileManagerPage({
         path={location.path}
         rootLabel={
           searchMode
-            ? t("search.results")
+            ? t("Resultados de búsqueda")
             : search.recent
-              ? t("title.recent")
+              ? t("Recent")
               : search.bookmarked
-                ? t("title.bookmarks")
-                : t("manager.myFiles")
+                ? t("Bookmarks")
+                : t("My files")
         }
         view={location.view}
         loading={fileQuery.isPending && activeSearch && !missingFolder && !invalidDates}
@@ -847,21 +875,21 @@ export function FileManagerPage({
             <div className="flex h-full flex-col items-center justify-center p-8 text-center">
               <p className="text-lg font-semibold">
                 {missingFolder
-                  ? t("search.chooseRecursive")
+                  ? t("Choose a folder to search recursively")
                   : invalidDates
-                    ? t("search.checkRange")
-                    : t("search.findAnything")}
+                    ? t("Check the modified-date range")
+                    : t("Find anything in your drive")}
               </p>
               <p className="mt-2 text-sm text-muted">
                 {missingFolder
-                  ? t("search.noFolderSaved")
+                  ? t("This saved search has no folder selected.")
                   : invalidDates
-                    ? t("search.dateError")
-                    : t("search.searchHint")}
+                    ? t("Start date must be before end date.")
+                    : t("Search by filename, or apply filters to explore.")}
               </p>
               {(missingFolder || invalidDates) && (
                 <Button variant="secondary" className="mt-3" onPress={() => setFiltersOpen(true)}>
-                  {missingFolder ? t("search.chooseFolderBtn") : t("search.editFilters")}
+                  {missingFolder ? t("Elegir carpeta") : t("Editar filtros")}
                 </Button>
               )}
             </div>
@@ -872,20 +900,20 @@ export function FileManagerPage({
         showLocations={Boolean(searchMode || search.bookmarked || search.recent)}
         emptyTitle={
           searchMode
-            ? t("search.noMatch")
+            ? t("No matching files")
             : search.recent
-              ? t("manager.noRecent")
+              ? t("No recent files")
               : search.bookmarked
-                ? t("manager.noBookmarks")
+                ? t("No bookmarks yet")
                 : undefined
         }
         emptyHint={
           searchMode
-            ? t("search.noMatchHint")
+            ? t("Try another name or adjust your filters.")
             : search.recent
-              ? t("manager.recentHint")
+              ? t("Files modified in the last 30 days appear here.")
               : search.bookmarked
-                ? t("manager.bookmarksHint")
+                ? t("Select files or folders and bookmark them from the action bar.")
                 : undefined
         }
         onOpenContainingFolder={
@@ -916,7 +944,7 @@ export function FileManagerPage({
       <div data-testid={`file-pane-${pane}`} className="flex min-h-0 min-w-0 flex-1 rounded-xl">
         <DropZone
           data-testid={pane === "primary" ? "file-drop-zone" : "file-drop-zone-secondary"}
-          aria-label={t("manager.dropInto", { path: location.path })}
+          aria-label={t("Upload files into {path}", { path: location.path })}
           getDropOperation={() => "copy"}
           className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden outline-none"
           onDrop={async (event) => {
@@ -930,7 +958,7 @@ export function FileManagerPage({
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden">
               {isDropTarget ? (
                 <div className="shrink-0 rounded-xl border-2 border-dashed border-accent bg-accent/10 px-4 py-4 text-center text-sm font-medium text-accent sm:px-6 sm:py-6">
-                  {t("manager.dropHere", { path: location.path })}
+                  {t("Drop files to upload into {path}", { path: location.path })}
                 </div>
               ) : null}
               {browser}
@@ -949,8 +977,8 @@ export function FileManagerPage({
             <div role="alert" className="mb-3 rounded-xl border border-danger/30 p-4 text-sm">
               <p className="font-medium">
                 {primaryFileQuery.isFetchNextPageError
-                  ? t("search.moreFailed")
-                  : t("search.failed")}
+                  ? t("No se pudieron cargar más resultados.")
+                  : t("No se pudo completar la búsqueda.")}
               </p>
               <p className="mt-1 text-muted">{userMessage(primaryFileQuery.error)}</p>
               <Button
@@ -964,7 +992,7 @@ export function FileManagerPage({
                     : primaryFileQuery.refetch())
                 }
               >
-                {t("picker.retry")}
+                {t("Reintentar")}
               </Button>
             </div>
           )}
@@ -984,20 +1012,20 @@ export function FileManagerPage({
       <AppDialog
         open={folderDialogOpen}
         onOpenChange={setFolderDialogOpen}
-        title={t("files.createFolder")}
-        description={t("manager.createIn", { path: activeLocation.path })}
+        title={t("Crear carpeta")}
+        description={t("Create a folder inside {path}.", { path: activeLocation.path })}
         size="md"
         footer={
           <>
             <Button variant="secondary" onPress={() => setFolderDialogOpen(false)}>
-              {t("dialog.cancel")}
+              {t("Cancelar")}
             </Button>
             <Button
               variant="primary"
               isDisabled={!folderName.trim() || fileActions.pending}
               onPress={() => void createFolder()}
             >
-              {t("files.createFolder")}
+              {t("Crear carpeta")}
             </Button>
           </>
         }
@@ -1007,14 +1035,14 @@ export function FileManagerPage({
           value={folderName}
           onChange={setFolderName}
           onKeyDown={(event) => {
-            if (event.key === "Enter") {
+            if (event.key === t("Enter")) {
               event.preventDefault();
               void createFolder();
             } else event.continuePropagation();
           }}
         >
-          <Label>{t("files.folderName")}</Label>
-          <Input placeholder={t("files.newFolderPlaceholder")} />
+          <Label>{t("Nombre de carpeta")}</Label>
+          <Input placeholder={t("Nueva carpeta")} />
         </TextField>
       </AppDialog>
 
@@ -1063,13 +1091,13 @@ export function FileManagerPage({
         onOpenChange={(open) => {
           if (!open) setPasteConflictPane(undefined);
         }}
-        title={t("manager.conflictTitle")}
-        description={t("manager.conflictDesc")}
+        title={t("El elemento ya existe")}
+        description={t("El destino ya contiene un elemento con el mismo nombre.")}
         size="md"
         footer={
           <>
             <Button variant="secondary" onPress={() => setPasteConflictPane(undefined)}>
-              {t("dialog.cancel")}
+              {t("Cancelar")}
             </Button>
             <Button
               variant="secondary"
@@ -1078,7 +1106,7 @@ export function FileManagerPage({
                 if (pasteConflictPane) void pasteClipboard(pasteConflictPane, "rename");
               }}
             >
-              {t("manager.conflictKeep")}
+              {t("Conservar ambos")}
             </Button>
             <Button
               variant="danger"
@@ -1087,12 +1115,16 @@ export function FileManagerPage({
                 if (pasteConflictPane) void pasteClipboard(pasteConflictPane, "replace");
               }}
             >
-              {t("manager.conflictReplace")}
+              {t("Reemplazar")}
             </Button>
           </>
         }
       >
-        <p className="text-sm text-muted">{t("manager.conflictHint")}</p>
+        <p className="text-sm text-muted">
+          {t(
+            "Reemplaza el elemento existente o conserva ambos asignando otro nombre al elemento movido.",
+          )}
+        </p>
       </AppDialog>
     </Page>
   );

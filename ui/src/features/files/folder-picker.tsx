@@ -1,10 +1,10 @@
+import { t } from "@/lib/localization";
 import { Button, Spinner } from "@heroui/react";
 import { useRef, useState } from "react";
 import { GridList, GridListItem } from "react-aria-components";
 import ChevronIcon from "~icons/gravity-ui/chevron-right";
 import FolderIcon from "~icons/gravity-ui/folder";
 import HomeIcon from "~icons/gravity-ui/house";
-import { useAppLocale } from "@/lib/locale";
 import { useFolderChildren } from "./queries";
 
 export function FolderPicker({
@@ -24,7 +24,7 @@ export function FolderPicker({
 }) {
   const [path, setPath] = useState(initialPath);
   const [parentId, setParentId] = useState<string | undefined>(initialParentId);
-  const { t } = useAppLocale();
+
   const folderIds = useRef(new Map<string, string | undefined>([[initialPath, initialParentId]]));
   const folders = useFolderChildren(parentId, parentId ? undefined : path);
   const crumbs = path.split("/").filter(Boolean);
@@ -38,14 +38,14 @@ export function FolderPicker({
   return (
     <div className="grid gap-3">
       <nav
-        aria-label={t("picker.destination")}
+        aria-label={t("Carpeta de destino")}
         className="flex min-w-0 items-center gap-1 overflow-x-auto text-sm"
       >
         <Button
           isIconOnly
           size="sm"
           variant="ghost"
-          aria-label={t("picker.root")}
+          aria-label={t("Raíz de la unidad")}
           onPress={() => openPath("/")}
         >
           <HomeIcon className="size-4" />
@@ -75,19 +75,19 @@ export function FolderPicker({
           </div>
         ) : folders.isError ? (
           <div className="grid min-h-56 place-items-center gap-3 p-6 text-center">
-            <p className="text-sm text-danger">{t("picker.loadError")}</p>
+            <p className="text-sm text-danger">{t("No se pudieron cargar las carpetas.")}</p>
             <Button size="sm" onPress={() => void folders.refetch()}>
-              {t("picker.retry")}
+              {t("Reintentar")}
             </Button>
           </div>
         ) : (
           <GridList
-            aria-label={t("picker.folders")}
+            aria-label={t("Carpetas")}
             items={folders.data?.items ?? []}
             selectionMode="none"
             renderEmptyState={() => (
               <div className="grid min-h-52 place-items-center text-sm text-muted">
-                {t("picker.empty")}
+                {t("No folders here.")}
               </div>
             )}
             className="outline-none"
@@ -122,7 +122,7 @@ export function FolderPicker({
           }
           onPress={() => onConfirm(parentId, path)}
         >
-          {confirmLabel ?? t("picker.moveHere")}
+          {confirmLabel ?? t("Move here")}
         </Button>
       </div>
     </div>

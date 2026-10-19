@@ -1,6 +1,5 @@
+import { t } from "@/lib/localization";
 import { Chip } from "@heroui/react";
-import { useAppLocale } from "@/lib/locale";
-
 const ACTIVE_STATUSES = new Set(["pending", "scheduled", "available", "running", "retryable"]);
 
 const KNOWN_STATUSES = new Set([
@@ -24,7 +23,6 @@ export function taskStatusLabel(
 
 export function TaskStatusChip({ status, animate = true }: { status: string; animate?: boolean }) {
   const active = ACTIVE_STATUSES.has(status);
-  const { t } = useAppLocale();
 
   return (
     <Chip size="sm" variant="soft" color={taskStatusColor(status)}>

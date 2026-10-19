@@ -25,6 +25,7 @@ func TestPublicFileContentRequestScope(t *testing.T) {
 		{http.MethodGet, "/v1/files/invalid/content", false},
 		{http.MethodGet, "/v1/public/shares/token/files/" + id + "/content", false},
 		{http.MethodGet, "/v1/files/" + id, false},
+		{http.MethodGet, "/v1/files/" + id + "/playback/statistics", false},
 		{http.MethodPost, "/v1/files/" + id + "/content", false},
 	}
 	for _, test := range tests {

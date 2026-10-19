@@ -1,3 +1,4 @@
+import { t } from "@/lib/localization";
 import { Button, Card, Checkbox, Spinner } from "@heroui/react";
 import type { ReactNode } from "react";
 import {
@@ -11,7 +12,6 @@ import {
   Virtualizer,
 } from "react-aria-components";
 import type { FileEntry } from "@/api/types";
-import { useAppLocale } from "@/lib/locale";
 import { useDateTimeFormatter, useFormatBytes } from "@/lib/format";
 import BackIcon from "~icons/gravity-ui/arrow-left";
 import UpIcon from "~icons/gravity-ui/chevron-up";
@@ -81,24 +81,17 @@ export function FileBrowser({
   showLocations = false,
   onOpenContainingFolder,
 }: FileBrowserProps) {
-  const { t } = useAppLocale();
-  const resolvedEmptyHint = emptyHint ?? t("browser.emptyHint");
-  const resolvedEmptyTitle = emptyTitle ?? t("browser.emptyTitle");
+  const resolvedEmptyHint = emptyHint ?? t("Esta carpeta está vacía.");
+  const resolvedEmptyTitle = emptyTitle ?? t("Esta carpeta está vacía");
   return (
     <Card className="@container/file-browser relative flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-hidden border border-border bg-surface/80 shadow-sm">
       <Card.Header
         className={`shrink-0 border-b border-border px-3 sm:px-4 ${compactToolbar ? "py-2" : "py-3"}`}
         data-testid="file-browser-toolbar"
       >
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5 [&>button]:shrink-0">
+        <div className="file-browser-header flex min-w-0 flex-wrap items-center gap-1.5 [&>button]:shrink-0">
           {onBack ? (
-            <Button
-              isIconOnly
-              size="sm"
-              variant="ghost"
-              aria-label={t("browser.back")}
-              onPress={onBack}
-            >
+            <Button isIconOnly size="sm" variant="ghost" aria-label={t("Volver")} onPress={onBack}>
               <BackIcon className="size-4" />
             </Button>
           ) : null}
@@ -107,7 +100,7 @@ export function FileBrowser({
               isIconOnly
               size="sm"
               variant="ghost"
-              aria-label={t("browser.up")}
+              aria-label={t("Subir una carpeta")}
               isDisabled={path === "/"}
               onPress={() => {
                 const parts = path.split("/").filter(Boolean);
@@ -127,13 +120,13 @@ export function FileBrowser({
               />
             </div>
           )}
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-1 sm:w-auto sm:flex-1 sm:justify-end [&>button]:shrink-0">
+          <div className="file-browser-controls flex w-full min-w-0 flex-wrap items-center gap-1 sm:w-auto sm:flex-1 sm:justify-end [&>button]:shrink-0">
             {toolbar}
             <Button
               isIconOnly
               size="sm"
               variant={view === "list" ? "secondary" : "ghost"}
-              aria-label={t("browser.listView")}
+              aria-label={t("Vista de lista")}
               onPress={() => onViewChange("list")}
             >
               <ListIcon className="size-4" />
@@ -142,7 +135,7 @@ export function FileBrowser({
               isIconOnly
               size="sm"
               variant={view === "grid" ? "secondary" : "ghost"}
-              aria-label={t("browser.gridView")}
+              aria-label={t("Vista de cuadrícula")}
               onPress={() => onViewChange("grid")}
             >
               <GridIcon className="size-4" />
@@ -214,14 +207,14 @@ function FileCollection({
   onOpenContainingFolder?: (file: FileEntry) => void;
 }) {
   const grid = view === "grid";
-  const { t } = useAppLocale();
+
   const selectedKeys = selection?.selectedKeys ?? new Set<React.Key>();
   const hasSelection = selection ? selectedKeys === "all" || selectedKeys.size > 0 : false;
 
   return (
     <Virtualizer key={view} layout={grid ? GridLayout : ListLayout}>
       <GridList
-        aria-label={t("browser.files")}
+        aria-label={t("Archivos y carpetas")}
         layout={grid ? "grid" : "stack"}
         selectionMode={selection ? "multiple" : "none"}
         selectionBehavior="replace"
@@ -323,11 +316,10 @@ function FileCollection({
 }
 
 function SelectionCheckbox({ file, isVisible }: { file: FileEntry; isVisible: boolean }) {
-  const { t } = useAppLocale();
   return (
     <Checkbox
       slot="selection"
-      aria-label={t("browser.selectName", { name: file.name })}
+      aria-label={t("Select {name}", { name: file.name })}
       className={({ isSelected }) =>
         [
           "shrink-0 transition-opacity",
@@ -357,7 +349,6 @@ function GridFile({
   location?: string;
   onOpenContainingFolder?: () => void;
 }) {
-  const { t } = useAppLocale();
   const formatBytes = useFormatBytes();
   return (
     <>
@@ -380,7 +371,7 @@ function GridFile({
           {file.kind === "folder"
             ? file.size != null
               ? formatBytes(file.size)
-              : t("browser.folderKind")
+              : t("Carpeta")
             : formatBytes(file.size ?? 0)}
         </p>
       </div>
@@ -401,7 +392,6 @@ function ListFile({
   location?: string;
   onOpenContainingFolder?: () => void;
 }) {
-  const { t } = useAppLocale();
   const formatBytes = useFormatBytes();
   const formatDateTime = useDateTimeFormatter();
   return (
@@ -435,7 +425,7 @@ function ListFile({
         {file.kind === "folder"
           ? file.size != null
             ? formatBytes(file.size)
-            : t("browser.folderKind")
+            : t("Carpeta")
           : formatBytes(file.size ?? 0)}
       </span>
       <span className="hidden min-w-0 text-xs text-muted lg:block">
@@ -458,13 +448,12 @@ function LocationButton({
   onPress?: () => void;
   className?: string;
 }) {
-  const { t } = useAppLocale();
   return (
     <Button
       size="sm"
       variant="ghost"
       className={`h-auto min-h-0 max-w-full justify-start rounded-sm px-0 py-0 text-[11px] text-muted ${className}`}
-      aria-label={t("browser.openFolder", { location })}
+      aria-label={t("Open containing folder {location}", { location })}
       onPress={onPress}
     >
       <span className="truncate">{location}</span>
@@ -483,10 +472,10 @@ function FileBrowserBreadcrumb({
 }) {
   const parts = path.split("/").filter(Boolean);
   const lastIndex = parts.length - 1;
-  const { t } = useAppLocale();
+
   return (
     <nav
-      aria-label={t("browser.currentFolder")}
+      aria-label={t("Carpeta actual")}
       className="flex min-w-0 items-center gap-1 overflow-hidden text-sm"
     >
       <Button

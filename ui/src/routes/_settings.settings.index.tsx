@@ -1,3 +1,4 @@
+import { t } from "@/lib/localization";
 import { Button, Chip, Spinner } from "@heroui/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -6,7 +7,6 @@ import { userMessage } from "@/api/errors";
 import { useCurrentUser } from "@/auth/use-current-user";
 import { SettingsPageHeader, SettingsRow, SettingsSection } from "@/components/settings-layout";
 import { getQueryClient } from "@/lib/queryClient";
-import { useAppLocale } from "@/lib/locale";
 import { useCountFormatter, useDateTimeFormatter, useFormatBytes } from "@/lib/format";
 import LogoutIcon from "~icons/gravity-ui/arrow-right-from-square";
 
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_settings/settings/")({
 
 function AccountSettings() {
   const navigate = useNavigate();
-  const { t } = useAppLocale();
+
   const formatBytes = useFormatBytes();
   const formatCount = useCountFormatter();
   const formatDateTime = useDateTimeFormatter();
@@ -40,34 +40,35 @@ function AccountSettings() {
       getQueryClient().clear();
       await navigate({ to: "/login", search: { redirect: "/files" }, replace: true });
     } catch (error) {
-      toast.error(t("account.logoutFailed"), { description: userMessage(error) });
+      toast.error(t("No se pudo cerrar la sesión"), { description: userMessage(error) });
     }
   };
 
   const displayName =
-    user.data.displayName ||
-    user.data.username ||
-    t("account.userFallback", { id: user.data.userId });
+    user.data.displayName || user.data.username || t("User {id}", { id: user.data.userId });
 
   return (
     <div className="space-y-6">
       <SettingsPageHeader
-        title={t("account.title")}
-        description={t("account.desc")}
+        title={t("Cuenta")}
+        description={t("Tu perfil de Teldrive, uso de almacenamiento y sesión actual.")}
         actions={
           <Button variant="danger" onPress={logOut} isDisabled={logout.isPending}>
             <LogoutIcon className="size-4" />
-            {t("account.logout")}
+            {t("Cerrar sesión")}
           </Button>
         }
       />
-      <SettingsSection title={t("account.profile")} description={t("account.profileDesc")}>
+      <SettingsSection
+        title={t("Perfil")}
+        description={t("Esta identidad corresponde a tu cuenta de Telegram autenticada.")}
+      >
         <SettingsRow
           label={displayName}
           description={
             user.data.username
               ? `@${user.data.username}`
-              : t("account.telegramUser", { id: user.data.userId })
+              : t("Telegram user {id}", { id: user.data.userId })
           }
         >
           <div className="flex justify-end">
@@ -91,22 +92,28 @@ function AccountSettings() {
             </Chip>
           </div>
         </SettingsRow>
-        <SettingsRow label={t("account.created")} description={t("account.createdDesc")}>
+        <SettingsRow
+          label={t("Cuenta creada")}
+          description={t("Fecha de creación de este perfil de Teldrive.")}
+        >
           <p className="text-right text-sm text-muted">
             {formatDateTime.format(new Date(user.data.createdAt))}
           </p>
         </SettingsRow>
       </SettingsSection>
-      <SettingsSection title={t("account.stats")} description={t("account.statsDesc")}>
-        <SettingsRow label={t("account.files")}>
+      <SettingsSection
+        title={t("Estadísticas de la unidad")}
+        description={t("Uso actual de almacenamiento de esta cuenta.")}
+      >
+        <SettingsRow label={t("Archivos")}>
           <p className="text-right font-mono text-sm">
             {formatCount.format(stats.data.totalFiles)}
           </p>
         </SettingsRow>
-        <SettingsRow label={t("account.stored")}>
+        <SettingsRow label={t("Datos almacenados")}>
           <p className="text-right font-mono text-sm">{formatBytes(stats.data.totalBytes)}</p>
         </SettingsRow>
-        <SettingsRow label={t("account.openUploads")}>
+        <SettingsRow label={t("Abrir subidas")}>
           <p className="text-right font-mono text-sm">
             {formatCount.format(stats.data.openUploads)}
           </p>

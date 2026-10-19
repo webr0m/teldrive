@@ -80,7 +80,12 @@ export default defineConfig(() => {
 
   return {
     define: {
-      "import.meta.env.VITE_APP_VERSION": JSON.stringify(process.env.VERSION?.trim() || "dev"),
+      "import.meta.env.VITE_APP_VERSION": JSON.stringify(process.env.TELDRIVE_UI_VERSION ?? process.env.VERSION ?? "dev"),
+      __TELDRIVE_BUILD__: JSON.stringify({
+        version: process.env.TELDRIVE_UI_VERSION ?? "v2.0.0-drive-es.1",
+        commit: process.env.TELDRIVE_UI_COMMIT ?? "desarrollo",
+        date: process.env.TELDRIVE_UI_BUILD_DATE ?? new Date().toISOString(),
+      }),
     },
     plugins: [
       pdfJsAssets(),
@@ -109,6 +114,7 @@ export default defineConfig(() => {
       exclude: ["foliate-js"],
     },
     server: {
+      watch: { ignored: ["**/*test-results*/**", "**/playwright-report/**", "**/*-snapshots/**"] },
       cors: true,
       proxy: {
         "/api": {

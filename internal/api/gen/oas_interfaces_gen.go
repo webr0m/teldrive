@@ -21,12 +21,20 @@ type BulkMoveFilesRes interface {
 	bulkMoveFilesRes()
 }
 
+type BulkSpamFilesRes interface {
+	bulkSpamFilesRes()
+}
+
 type BulkTrashFilesRes interface {
 	bulkTrashFilesRes()
 }
 
 type CancelJobRes interface {
 	cancelJobRes()
+}
+
+type CheckManagedBotUsernameRes interface {
+	checkManagedBotUsernameRes()
 }
 
 type CleanTrashRes interface {
@@ -39,6 +47,10 @@ type CompletePublicShareUploadRes interface {
 
 type CompleteUploadRes interface {
 	completeUploadRes()
+}
+
+type ControlCastingDeviceRes interface {
+	controlCastingDeviceRes()
 }
 
 type CookieTelegramLoginVerifyCodeRes interface {
@@ -65,6 +77,10 @@ type CreateBotsRes interface {
 	createBotsRes()
 }
 
+type CreateCastingRelayRes interface {
+	createCastingRelayRes()
+}
+
 type CreateChannelRes interface {
 	createChannelRes()
 }
@@ -85,8 +101,20 @@ type CreateJobRes interface {
 	createJobRes()
 }
 
+type CreateManagedBotRes interface {
+	createManagedBotRes()
+}
+
 type CreatePeriodicJobRes interface {
 	createPeriodicJobRes()
+}
+
+type CreatePlaybackRes interface {
+	createPlaybackRes()
+}
+
+type CreatePublicPlaybackRes interface {
+	createPublicPlaybackRes()
 }
 
 type CreatePublicShareFolderRes interface {
@@ -133,6 +161,10 @@ type DiscoverChannelsRes interface {
 	discoverChannelsRes()
 }
 
+type DismissIncomingSpamRes interface {
+	dismissIncomingSpamRes()
+}
+
 type DownloadFileLegacyRes interface {
 	downloadFileLegacyRes()
 }
@@ -157,6 +189,10 @@ type DownloadPublicShareRes interface {
 	downloadPublicShareRes()
 }
 
+type GetBotManagerRes interface {
+	getBotManagerRes()
+}
+
 type GetCurrentUserRes interface {
 	getCurrentUserRes()
 }
@@ -167,6 +203,10 @@ type GetDriveStatisticsRes interface {
 
 type GetFileCategoryStatisticsRes interface {
 	getFileCategoryStatisticsRes()
+}
+
+type GetFilePlaybackStatisticsRes interface {
+	getFilePlaybackStatisticsRes()
 }
 
 type GetFileRes interface {
@@ -187,6 +227,14 @@ type GetJobStatisticsRes interface {
 
 type GetPeriodicJobCatalogRes interface {
 	getPeriodicJobCatalogRes()
+}
+
+type GetPlaybackSubtitlesRes interface {
+	getPlaybackSubtitlesRes()
+}
+
+type GetPlaybackTracksRes interface {
+	getPlaybackTracksRes()
 }
 
 type GetProfilePhotoRes interface {
@@ -253,6 +301,10 @@ type ListBotsRes interface {
 	listBotsRes()
 }
 
+type ListCastingDevicesRes interface {
+	listCastingDevicesRes()
+}
+
 type ListChannelsRes interface {
 	listChannelsRes()
 }
@@ -267,6 +319,10 @@ type ListFileSharesRes interface {
 
 type ListFilesRes interface {
 	listFilesRes()
+}
+
+type ListIncomingSpamRes interface {
+	listIncomingSpamRes()
 }
 
 type ListJobQueuesRes interface {
@@ -313,6 +369,10 @@ type LogoutSessionRes interface {
 	logoutSessionRes()
 }
 
+type MarkIncomingSpamRes interface {
+	markIncomingSpamRes()
+}
+
 type MoveFileRes interface {
 	moveFileRes()
 }
@@ -323,6 +383,10 @@ type PauseJobQueueRes interface {
 
 type PausePeriodicJobRes interface {
 	pausePeriodicJobRes()
+}
+
+type PlayOnCastingDeviceRes interface {
+	playOnCastingDeviceRes()
 }
 
 type ProvisionBotRes interface {
@@ -373,6 +437,10 @@ type RestoreFileRes interface {
 	restoreFileRes()
 }
 
+type RestoreIncomingSpamRes interface {
+	restoreIncomingSpamRes()
+}
+
 type ResumeJobQueueRes interface {
 	resumeJobQueueRes()
 }
@@ -415,6 +483,10 @@ type SelectChannelRes interface {
 
 type StreamEventsRes interface {
 	streamEventsRes()
+}
+
+type StreamPlaybackRes interface {
+	streamPlaybackRes()
 }
 
 type SyncChannelsRes interface {

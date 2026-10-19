@@ -1,3 +1,4 @@
+import { t } from "@/lib/localization";
 import { Button, Input, Label, Spinner, TextField } from "@heroui/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -11,7 +12,6 @@ import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
 import { SettingsPageHeader, SettingsRow, SettingsSection } from "@/components/settings-layout";
 import { newIdempotencyKey } from "@/features/shared/idempotency";
 import { getQueryClient } from "@/lib/queryClient";
-import { useAppLocale } from "@/lib/locale";
 import { useDateTimeFormatter } from "@/lib/format";
 
 export const Route = createFileRoute("/_settings/settings/api-keys")({
@@ -31,7 +31,7 @@ function ApiKeysSettings() {
   const [name, setName] = useState("");
   const [created, setCreated] = useState<ApiKeyCreated>();
   const [revokeKey, setRevokeKey] = useState<{ id: string; name: string } | null>(null);
-  const { t } = useAppLocale();
+
   const formatDateTime = useDateTimeFormatter();
   const query = $api.useSuspenseQuery(
     "get",
@@ -44,10 +44,10 @@ function ApiKeysSettings() {
     onSuccess: () => {
       setRevokeKey(null);
       void refresh();
-      toast.success(t("keys.revoked"));
+      toast.success(t("Clave de API revocada"));
     },
     onError: (error) => {
-      toast.error(t("keys.revokeFailed"), { description: userMessage(error) });
+      toast.error(t("API key could not be revoked"), { description: userMessage(error) });
     },
   });
   const refresh = () =>
@@ -57,16 +57,27 @@ function ApiKeysSettings() {
 
   return (
     <div className="space-y-6">
-      <SettingsPageHeader title={t("keys.title")} description={t("keys.desc")} />
-      <SettingsSection title={t("keys.create")} description={t("keys.createDesc")}>
-        <SettingsRow label={t("keys.name")} description={t("keys.nameDesc")}>
+      <SettingsPageHeader
+        title={t("Claves de API")}
+        description={t(
+          "Credenciales para rclone y clientes externos. El acceso a esta interfaz utiliza tu sesión de Telegram.",
+        )}
+      />
+      <SettingsSection
+        title={t("Crear clave de API")}
+        description={t("La clave se muestra una sola vez. Guárdala en tu gestor de contraseñas.")}
+      >
+        <SettingsRow
+          label={t("Nombre de la clave")}
+          description={t("Elige un nombre que identifique el cliente o equipo.")}
+        >
           <div className="flex gap-2">
             <TextField className="min-w-0 flex-1">
-              <Label className="sr-only">{t("keys.name")}</Label>
+              <Label className="sr-only">{t("Nombre de la clave")}</Label>
               <Input
                 value={name}
                 onChange={(event) => setName(event.currentTarget.value)}
-                placeholder={t("keys.namePh")}
+                placeholder={t("rclone laptop")}
               />
             </TextField>
             <Button
@@ -81,26 +92,31 @@ function ApiKeysSettings() {
                   setName("");
                   await refresh();
                 } catch (error) {
-                  toast.error(t("keys.createFailed"), { description: userMessage(error) });
+                  toast.error(t("API key could not be created"), {
+                    description: userMessage(error),
+                  });
                 }
               }}
               isDisabled={!name.trim() || create.isPending}
             >
-              {t("keys.createBtn")}
+              {t("Crear")}
             </Button>
           </div>
         </SettingsRow>
         {created ? (
-          <SettingsRow label={t("keys.secret")} description={t("keys.secretDesc")}>
+          <SettingsRow
+            label={t("New API key secret")}
+            description={t("Copia esta clave ahora. No podrás consultarla de nuevo.")}
+          >
             <div className="flex gap-2">
               <Input readOnly value={created.secret} className="min-w-0 flex-1 font-mono" />
               <Button
                 isIconOnly
                 variant="secondary"
-                aria-label={t("keys.copyAria")}
+                aria-label={t("Copiar clave de API")}
                 onPress={() => {
                   void navigator.clipboard.writeText(created.secret);
-                  toast.success(t("keys.copied"));
+                  toast.success(t("API key copied"));
                 }}
               >
                 <CopyIcon className="size-4" />
@@ -109,13 +125,16 @@ function ApiKeysSettings() {
           </SettingsRow>
         ) : null}
       </SettingsSection>
-      <SettingsSection title={t("keys.existing")} description={t("keys.existingDesc")}>
+      <SettingsSection
+        title={t("Claves de API existentes")}
+        description={t("Revoca las credenciales que ya no utilices.")}
+      >
         {query.data.items.length ? (
           query.data.items.map((item) => (
             <SettingsRow
               key={item.id}
               label={item.name}
-              description={t("keys.createdLine", {
+              description={t("Created {created} · last used {used}", {
                 created: formatDate(item.createdAt, formatDateTime) ?? t("keys.never"),
                 used: formatDate(item.lastUsedAt, formatDateTime) ?? t("keys.never"),
               })}
@@ -125,7 +144,7 @@ function ApiKeysSettings() {
                   isIconOnly
                   size="sm"
                   variant="ghost"
-                  aria-label={t("keys.revokeAria", { name: item.name })}
+                  aria-label={t("Revoke {name}", { name: item.name })}
                   isDisabled={revoke.isPending && revokeKey?.id === item.id}
                   onPress={() => setRevokeKey({ id: item.id, name: item.name })}
                 >
@@ -135,7 +154,7 @@ function ApiKeysSettings() {
             </SettingsRow>
           ))
         ) : (
-          <div className="px-5 py-8 text-sm text-muted">{t("keys.empty")}</div>
+          <div className="px-5 py-8 text-sm text-muted">{t("No API keys created.")}</div>
         )}
       </SettingsSection>
       <ConfirmDialog
@@ -143,9 +162,11 @@ function ApiKeysSettings() {
         onOpenChange={(open) => {
           if (!open && !revoke.isPending) setRevokeKey(null);
         }}
-        title={t("keys.revokeTitle")}
-        message={t("keys.revokeMsg", { name: revokeKey?.name ?? "" })}
-        confirmLabel={t("keys.revokeConfirm")}
+        title={t("¿Revocar la clave de API?")}
+        message={t("Applications using “{name}” will lose access immediately.", {
+          name: revokeKey?.name ?? "",
+        })}
+        confirmLabel={t("Revocar clave")}
         isPending={revoke.isPending}
         onConfirm={() => {
           if (revokeKey) {

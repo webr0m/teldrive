@@ -1,5 +1,8 @@
 [http]
 address = "127.0.0.1:8080"
+# Optional public origin for shared links, including links copied from Desktop.
+# Example: "https://drive.example.com". Configure your tunnel or reverse proxy separately.
+public-url = ""
 read-header-timeout = "10s"
 read-timeout = "1h"
 write-timeout = "1h"
@@ -96,3 +99,10 @@ reconnect-max = "30s"
 [logging]
 log-level = "info"
 log-format = "json"
+
+# Conversión opcional para los códecs que el navegador no puede reproducir.
+[media]
+enabled = true
+ffmpeg-path = "ffmpeg"
+max-concurrent = 2
+timeout = "2h"

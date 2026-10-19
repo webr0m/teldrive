@@ -1,9 +1,9 @@
+import { t } from "@/lib/localization";
 import { Label, ListBox, NumberField, Select, Switch } from "@heroui/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import type { UploadPreferences } from "@/api/types";
 import { SettingsPageHeader, SettingsRow, SettingsSection } from "@/components/settings-layout";
-import { useAppLocale } from "@/lib/locale";
 import {
   MAX_PART_SIZE_MIB,
   normalizePartSizeMiB,
@@ -16,16 +16,27 @@ export const Route = createFileRoute("/_settings/settings/uploads")({ component:
 function UploadSettings() {
   const uploads = usePreferences()?.uploads;
   const { mutate: updatePreferences } = useUpdatePreferences();
-  const { t } = useAppLocale();
+
   if (!uploads) return null;
 
   return (
     <div className="space-y-6">
-      <SettingsPageHeader title={t("uploads.title")} description={t("uploads.desc")} />
-      <SettingsSection title={t("uploads.behavior")} description={t("uploads.behaviorDesc")}>
-        <SettingsRow label={t("uploads.encryption")} description={t("uploads.encryptionDesc")}>
+      <SettingsPageHeader
+        title={t("Subidas")}
+        description={t(
+          "Configura subidas simultáneas, cifrado, conflictos de nombre y tamaño de fragmentos.",
+        )}
+      />
+      <SettingsSection
+        title={t("Comportamiento de subidas")}
+        description={t("These preferences are saved to your account and apply to new uploads.")}
+      >
+        <SettingsRow
+          label={t("Cifrado")}
+          description={t("Cifra los fragmentos con la clave del servidor antes de almacenarlos.")}
+        >
           <Switch
-            aria-label={t("uploads.encryptLabel")}
+            aria-label={t("Cifrar archivos subidos")}
             isSelected={uploads.encryption}
             onChange={(isSelected) => updatePreferences({ uploads: { encryption: isSelected } })}
           >
@@ -33,13 +44,18 @@ function UploadSettings() {
               <Switch.Control>
                 <Switch.Thumb />
               </Switch.Control>
-              <Label>{t("uploads.encryptLabel")}</Label>
+              <Label>{t("Cifrar archivos subidos")}</Label>
             </Switch.Content>
           </Switch>
         </SettingsRow>
-        <SettingsRow label={t("uploads.conflicts")} description={t("uploads.conflictsDesc")}>
+        <SettingsRow
+          label={t("Conflictos de nombre")}
+          description={t(
+            "Elige qué hacer si el destino ya contiene un elemento con el mismo nombre.",
+          )}
+        >
           <Select
-            aria-label={t("uploads.conflicts")}
+            aria-label={t("Conflictos de nombre")}
             selectedKey={uploads.conflictPolicy}
             onSelectionChange={(key) =>
               updatePreferences({
@@ -53,22 +69,25 @@ function UploadSettings() {
             </Select.Trigger>
             <Select.Popover>
               <ListBox>
-                <ListBox.Item id="rename" textValue={t("uploads.optRename")}>
-                  {t("uploads.optRename")}
+                <ListBox.Item id="rename" textValue={t("Renombrar el nuevo archivo")}>
+                  {t("Renombrar el nuevo archivo")}
                 </ListBox.Item>
-                <ListBox.Item id="replace" textValue={t("uploads.optReplace")}>
-                  {t("uploads.optReplace")}
+                <ListBox.Item id="replace" textValue={t("Reemplazar existente")}>
+                  {t("Reemplazar existente")}
                 </ListBox.Item>
-                <ListBox.Item id="fail" textValue={t("uploads.optError")}>
-                  {t("uploads.optError")}
+                <ListBox.Item id="fail" textValue={t("Detener con error")}>
+                  {t("Detener con error")}
                 </ListBox.Item>
               </ListBox>
             </Select.Popover>
           </Select>
         </SettingsRow>
-        <SettingsRow label={t("uploads.concurrency")} description={t("uploads.concurrencyDesc")}>
+        <SettingsRow
+          label={t("Subidas simultáneas")}
+          description={t("Cantidad de archivos que este navegador sube simultáneamente.")}
+        >
           <NumberField
-            aria-label={t("uploads.concurrency")}
+            aria-label={t("Concurrent uploads")}
             value={uploads.concurrency}
             minValue={1}
             maxValue={12}
@@ -78,7 +97,7 @@ function UploadSettings() {
               })
             }
           >
-            <Label className="sr-only">{t("uploads.concurrency")}</Label>
+            <Label className="sr-only">{t("Subidas simultáneas")}</Label>
             <NumberField.Group>
               <NumberField.DecrementButton />
               <NumberField.Input />
@@ -86,7 +105,12 @@ function UploadSettings() {
             </NumberField.Group>
           </NumberField>
         </SettingsRow>
-        <SettingsRow label={t("uploads.partSize")} description={t("uploads.partSizeDesc")}>
+        <SettingsRow
+          label={t("Tamaño preferido de fragmento")}
+          description={t(
+            "El valor inicial es 512 MiB. En subidas cifradas se ajusta a múltiplos de 16 MiB; el servidor puede elegir otro tamaño.",
+          )}
+        >
           <PartSizeField preferredPartSize={uploads.preferredPartSize} />
         </SettingsRow>
       </SettingsSection>
@@ -98,7 +122,6 @@ function PartSizeField({ preferredPartSize }: { preferredPartSize: number }) {
   const { mutate: updatePreferences } = useUpdatePreferences();
   const [value, setValue] = useState(preferredPartSize / 1024 / 1024);
   const valueRef = useRef(value);
-  const { t } = useAppLocale();
 
   const commit = () => {
     const normalized = normalizePartSizeMiB(valueRef.current);
@@ -109,7 +132,7 @@ function PartSizeField({ preferredPartSize }: { preferredPartSize: number }) {
 
   return (
     <NumberField
-      aria-label={t("uploads.partSizeAria")}
+      aria-label={t("Tamaño preferido de fragmento en MiB")}
       value={value}
       maxValue={MAX_PART_SIZE_MIB}
       onChange={(next) => {
@@ -118,7 +141,7 @@ function PartSizeField({ preferredPartSize }: { preferredPartSize: number }) {
       }}
       onBlur={commit}
     >
-      <Label className="sr-only">{t("uploads.partSizeAria")}</Label>
+      <Label className="sr-only">{t("Tamaño preferido de fragmento en MiB")}</Label>
       <NumberField.Group>
         <NumberField.DecrementButton />
         <NumberField.Input />

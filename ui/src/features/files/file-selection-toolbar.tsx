@@ -1,3 +1,4 @@
+import { t } from "@/lib/localization";
 import { Button } from "@heroui/react";
 import DownloadIcon from "~icons/gravity-ui/arrow-down-to-line";
 import CopyIcon from "~icons/gravity-ui/copy";
@@ -9,7 +10,6 @@ import CutIcon from "~icons/gravity-ui/scissors";
 import TrashIcon from "~icons/gravity-ui/trash-bin";
 import CloseIcon from "~icons/gravity-ui/xmark";
 import BookmarkIcon from "~icons/gravity-ui/bookmark";
-import { useAppLocale } from "@/lib/locale";
 import type { FileEntry } from "../../api/types";
 
 export function FileSelectionToolbar({
@@ -25,6 +25,7 @@ export function FileSelectionToolbar({
   onCopyDownloadLinks,
   onMove,
   onTrash,
+  onSpam,
   onClear,
 }: {
   selectedFiles: FileEntry[];
@@ -39,9 +40,9 @@ export function FileSelectionToolbar({
   onCopyDownloadLinks?: () => void;
   onMove?: () => void;
   onTrash?: () => void;
+  onSpam?: () => void;
   onClear?: () => void;
 }) {
-  const { t } = useAppLocale();
   if (selectedFiles.length === 0) return null;
   const selectedCount = selectedFiles.length;
   const singleSelectedFile = selectedCount === 1 ? selectedFiles[0] : undefined;
@@ -50,18 +51,18 @@ export function FileSelectionToolbar({
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
       <fieldset
-        aria-label={t("selection.actions")}
-        className="pointer-events-auto flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface/95 p-1.5 shadow-xl backdrop-blur @2xl/file-browser:rounded-full [&>button]:shrink-0"
+        aria-label={t("Acciones de archivos seleccionados")}
+        className="touch-action-toolbar pointer-events-auto flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface/95 p-1.5 shadow-xl backdrop-blur @2xl/file-browser:rounded-full [&>button]:shrink-0"
       >
         <span className="shrink-0 rounded-full bg-accent/10 px-3 py-2 text-sm font-medium text-accent">
-          {t("selection.count", { count: selectedCount })}
+          {t("{count} selected", { count: selectedCount })}
         </span>
         {onCut ? (
           <Button
             isIconOnly
             size="sm"
             variant="ghost"
-            aria-label={t("selection.cut")}
+            aria-label={t("Cortar elementos seleccionados")}
             isDisabled={pending}
             onPress={onCut}
           >
@@ -73,7 +74,7 @@ export function FileSelectionToolbar({
             isIconOnly
             size="sm"
             variant="ghost"
-            aria-label={t("selection.copy")}
+            aria-label={t("Copiar elementos seleccionados")}
             isDisabled={pending}
             onPress={onCopy}
           >
@@ -85,7 +86,9 @@ export function FileSelectionToolbar({
             isIconOnly
             size="sm"
             variant="ghost"
-            aria-label={bookmarked ? t("selection.bookmarkRemove") : t("selection.bookmarkAdd")}
+            aria-label={
+              bookmarked ? t("Remove bookmarks from selected items") : t("Bookmark selected items")
+            }
             isDisabled={pending}
             onPress={onBookmark}
           >
@@ -97,7 +100,7 @@ export function FileSelectionToolbar({
             isIconOnly
             size="sm"
             variant="ghost"
-            aria-label={t("selection.rename")}
+            aria-label={t("Renombrar elemento seleccionado")}
             isDisabled={pending}
             onPress={onRename}
           >
@@ -109,7 +112,7 @@ export function FileSelectionToolbar({
             isIconOnly
             size="sm"
             variant="ghost"
-            aria-label={t("selection.share")}
+            aria-label={t("Compartir elemento seleccionado")}
             isDisabled={pending}
             onPress={onShare}
           >
@@ -121,7 +124,7 @@ export function FileSelectionToolbar({
             isIconOnly
             size="sm"
             variant="ghost"
-            aria-label={t("selection.download")}
+            aria-label={t("Descargar archivo seleccionado")}
             isDisabled={pending}
             onPress={onDownload}
           >
@@ -134,7 +137,9 @@ export function FileSelectionToolbar({
             size="sm"
             variant="ghost"
             aria-label={
-              selectedCount === 1 ? t("selection.copyLinkOne") : t("selection.copyLinkMany")
+              selectedCount === 1
+                ? t("Copiar enlace de descarga del archivo seleccionado")
+                : t("Copiar enlaces de descarga de los archivos seleccionados")
             }
             onPress={onCopyDownloadLinks}
             isDisabled={pending}
@@ -147,7 +152,7 @@ export function FileSelectionToolbar({
             isIconOnly
             size="sm"
             variant="ghost"
-            aria-label={t("selection.move")}
+            aria-label={t("Mover elementos seleccionados")}
             isDisabled={pending}
             onPress={onMove}
           >
@@ -159,11 +164,22 @@ export function FileSelectionToolbar({
             isIconOnly
             size="sm"
             variant="danger"
-            aria-label={t("selection.trash")}
+            aria-label={t("Mover elementos seleccionados a la papelera")}
             isDisabled={pending}
             onPress={onTrash}
           >
             <TrashIcon className="size-4" />
+          </Button>
+        ) : null}
+        {onSpam ? (
+          <Button
+            size="sm"
+            variant="secondary"
+            aria-label={t("Marcar elementos seleccionados como spam")}
+            isDisabled={pending}
+            onPress={onSpam}
+          >
+            {t("Spam")}
           </Button>
         ) : null}
         {onClear ? (
@@ -171,7 +187,7 @@ export function FileSelectionToolbar({
             isIconOnly
             size="sm"
             variant="ghost"
-            aria-label={t("selection.clear")}
+            aria-label={t("Borrar selección")}
             isDisabled={pending}
             onPress={onClear}
           >

@@ -1,3 +1,4 @@
+import { t } from "@/lib/localization";
 import {
   RouterProvider as AriaRouterProvider,
   Avatar,
@@ -21,7 +22,6 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { useTheme } from "@/lib/theme";
-import { useAppLocale } from "@/lib/locale";
 import { type Ref, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import LogoutIcon from "~icons/gravity-ui/arrow-right-from-square";
@@ -31,7 +31,6 @@ import ChevronRightIcon from "~icons/gravity-ui/chevron-right";
 import StorageIcon from "~icons/gravity-ui/database";
 import FolderIcon from "~icons/gravity-ui/folder";
 import SettingsIcon from "~icons/gravity-ui/gear";
-import LogoIcon from "~icons/gravity-ui/layers";
 import GridIcon from "~icons/gravity-ui/layout-header-cells";
 import TasksIcon from "~icons/gravity-ui/list-ul";
 import SearchIcon from "~icons/gravity-ui/magnifier";
@@ -43,6 +42,7 @@ import { $api } from "../api/client";
 import { isUnauthorized, userMessage } from "../api/errors";
 import { currentUserQueryOptions } from "../auth/queries";
 import { UploadShelf } from "../components/upload-shelf";
+import { StorageSummary } from "../components/storage-summary";
 import { getQueryClient } from "../lib/queryClient";
 import { importLegacyPreferences, preferencesQueryOptions } from "../lib/preferences";
 
@@ -52,20 +52,21 @@ const mainNav = [
   { key: "bookmarks", icon: BookmarkIcon, path: "/files", bookmarked: true },
   { key: "shared", icon: FolderIcon, path: "/shared" },
   { key: "sharedWithMe", icon: FolderIcon, path: "/shared-with-me" },
-  { key: "storage", icon: StorageIcon, path: "/storage" },
   { key: "tasks", icon: TasksIcon, path: "/tasks", capability: "system.manageJobs" },
+  { key: "spam", icon: GridIcon, path: "/spam" },
   { key: "trash", icon: GridIcon, path: "/trash" },
+  { key: "storage", icon: StorageIcon, path: "/storage" },
 ] as const;
 
 const DESKTOP_BREAKPOINT = 1024;
 
 function getPageTitle(pathname: string, t: (key: string) => string) {
-  if (pathname === "/search") return t("title.search");
-  if (pathname.startsWith("/settings")) return t("title.settings");
+  if (pathname === "/search") return t("Buscar");
+  if (pathname.startsWith("/settings")) return t("Configuración");
   const item = mainNav.find(
     (entry) => pathname === entry.path || pathname.startsWith(`${entry.path}/`),
   );
-  return item ? t(`nav.${item.key}`) : t("title.app");
+  return item ? t(`nav.${item.key}`) : t("Teldrive");
 }
 
 function Sidebar({
@@ -79,7 +80,7 @@ function Sidebar({
 }) {
   const navigate = useNavigate();
   const matchRoute = useMatchRoute();
-  const { t } = useAppLocale();
+
   const routeSearch = useLocation({
     select: (location) => location.search as Record<string, unknown>,
   });
@@ -93,12 +94,12 @@ function Sidebar({
   const displayName =
     user?.displayName?.trim() ||
     user?.username?.trim() ||
-    (user ? t("account.userFallback", { id: user.userId }) : t("account.title"));
+    (user ? t("User {id}", { id: user.userId }) : t("Cuenta"));
   const secondaryLabel = user?.username
     ? `@${user.username}`
     : user?.premium
-      ? "Telegram Premium"
-      : "Telegram";
+      ? t("Telegram Premium")
+      : t("Telegram");
   const initials =
     displayName
       .split(/\s+/)
@@ -113,7 +114,7 @@ function Sidebar({
       onNavigate?.();
       await navigate({ to: "/login", search: { redirect: "/files" }, replace: true });
     } catch (error) {
-      toast.error(t("account.logoutFailed"), { description: userMessage(error) });
+      toast.error(t("No se pudo cerrar la sesión"), { description: userMessage(error) });
     }
   };
   const renderItem = (item: (typeof mainNav)[number]) => {
@@ -166,7 +167,7 @@ function Sidebar({
   return (
     <aside
       className={cn(
-        "flex h-full flex-col overflow-hidden border-r border-border",
+        "flex h-full flex-col overflow-hidden border-r border-border bg-sidebar text-sidebar-foreground",
         !mobile && "transition-[width] duration-200",
         mobile
           ? "w-[min(19rem,86vw)] bg-sidebar shadow-2xl"
@@ -174,8 +175,8 @@ function Sidebar({
       )}
     >
       <div className="flex h-16 items-center gap-3 px-4">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-          <LogoIcon className="size-4" />
+        <div className="flex size-9 shrink-0 items-center justify-center">
+          <img src="/images/teldrive.png" alt="" className="size-9 object-contain" />
         </div>
         <div
           className={cn(
@@ -184,13 +185,15 @@ function Sidebar({
           )}
         >
           <p className="text-base font-semibold tracking-tight">Teldrive</p>
-          <p className="text-[10px] uppercase tracking-[0.16em] text-muted">{t("app.tagline")}</p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
+            {t("Unidad en la nube")}
+          </p>
         </div>
       </div>
 
       <Separator className="mx-3 w-auto" />
-      <nav aria-label={t("sidebar.nav")} className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {visibleMainNav.map(renderItem)}
+      <nav aria-label={t("Main navigation")} className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {visibleMainNav.map((item) => (<div key={item.key}>{renderItem(item)}{item.path === "/storage" && (!collapsed || mobile) ? <StorageSummary /> : null}</div>))}
       </nav>
       <div className="border-t border-border px-3 py-3">
         <Dropdown isOpen={accountMenuOpen} onOpenChange={setAccountMenuOpen}>
@@ -204,7 +207,7 @@ function Sidebar({
           ) : (
             <Button
               variant="ghost"
-              aria-label={t("account.menu")}
+              aria-label={t("Account menu")}
               className="flex h-14 w-full items-center justify-start gap-3 rounded-xl px-2 text-muted hover:bg-default/30 hover:text-foreground"
             >
               <Avatar className="size-9 shrink-0">
@@ -219,14 +222,14 @@ function Sidebar({
           )}
           <Dropdown.Popover placement="top start" className="min-w-52">
             <Dropdown.Menu
-              aria-label={t("account.menu")}
+              aria-label={t("Account menu")}
               onAction={(key) => {
                 if (key === "logout") void signOut();
               }}
             >
               <Dropdown.Item
                 id="settings"
-                textValue={t("account.settings")}
+                textValue={t("Configuración")}
                 render={({ ref, ...itemProps }) => {
                   return (
                     // @ts-expect-error HeroUI types render props for a menu item div; this render target is an anchor.
@@ -244,15 +247,15 @@ function Sidebar({
                 }}
               >
                 <SettingsIcon className="size-4" />
-                <Label>{t("account.settings")}</Label>
+                <Label>{t("Configuración")}</Label>
               </Dropdown.Item>
               <Dropdown.Item
                 id="logout"
-                textValue={t("account.logout")}
+                textValue={t("Cerrar sesión")}
                 isDisabled={logout.isPending}
               >
                 <LogoutIcon className="size-4" />
-                <Label>{logout.isPending ? t("account.loggingOut") : t("account.logout")}</Label>
+                <Label>{logout.isPending ? t("Cerrando sesión…") : t("Cerrar sesión")}</Label>
               </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown.Popover>
@@ -279,7 +282,7 @@ function TopBar({
   onOpenMobile: () => void;
 }) {
   const { resolvedTheme, setTheme } = useTheme();
-  const { t } = useAppLocale();
+
   const navigate = useNavigate();
   const searchRef = useRef<HTMLInputElement>(null);
   const searchTimer = useRef<number | undefined>(undefined);
@@ -292,9 +295,9 @@ function TopBar({
   const locationKey = useLocation({ select: (location) => location.href });
   const title =
     pathname === "/files" && routeSearch.recent
-      ? t("title.recent")
+      ? t("Recent")
       : pathname === "/files" && routeSearch.bookmarked
-        ? t("title.bookmarks")
+        ? t("Bookmarks")
         : getPageTitle(pathname, t);
   const scheduleSearch = (value: string) => {
     if (searchTimer.current) window.clearTimeout(searchTimer.current);
@@ -343,7 +346,11 @@ function TopBar({
         className="size-9 rounded-xl"
         onPress={desktop ? onToggleSidebar : onOpenMobile}
         aria-label={
-          desktop ? (collapsed ? t("sidebar.expand") : t("sidebar.collapse")) : t("sidebar.open")
+          desktop
+            ? collapsed
+              ? t("Expandir menú lateral")
+              : t("Contraer menú lateral")
+            : t("Abrir navegación")
         }
       >
         {desktop ? (
@@ -362,7 +369,7 @@ function TopBar({
       </div>
 
       <search
-        aria-label={t("search.navLabel")}
+        aria-label={t("Buscar en la unidad")}
         className="flex min-w-0 flex-1 items-center md:max-w-md"
       >
         <form
@@ -397,7 +404,7 @@ function TopBar({
             </InputGroup.Prefix>
             <InputGroup.Input
               ref={searchRef}
-              aria-label={t("search.aria")}
+              aria-label={t("Buscar archivos")}
               value={searchText}
               maxLength={512}
               enterKeyHint="search"
@@ -412,7 +419,7 @@ function TopBar({
               }}
               onKeyDown={(event) => {
                 if (
-                  event.key === "Enter" &&
+                  event.key === t("Enter") &&
                   (event.nativeEvent.isComposing || composingSearch.current)
                 )
                   event.preventDefault();
@@ -422,11 +429,11 @@ function TopBar({
                 setSearchText(value);
                 scheduleSearch(value);
               }}
-              placeholder={t("search.placeholder")}
+              placeholder={t("Buscar archivos")}
               className="min-w-0 text-sm"
             />
             <InputGroup.Suffix className="hidden md:flex">
-              <Kbd>Ctrl K</Kbd>
+              <Kbd>{t("Ctrl K")}</Kbd>
             </InputGroup.Suffix>
           </InputGroup>
         </form>
@@ -436,7 +443,7 @@ function TopBar({
         variant="ghost"
         className="size-9 rounded-xl"
         onPress={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-        aria-label={t("theme.toggle")}
+        aria-label={t("Cambiar tema de color")}
       >
         {resolvedTheme === "dark" ? (
           <SunIcon className="size-4" />
@@ -450,7 +457,7 @@ function TopBar({
 
 function Layout() {
   const navigate = useNavigate();
-  const { t } = useAppLocale();
+
   const pathname = useLocation({ select: (location) => location.pathname });
   const [collapsed, setCollapsed] = useState(false);
   const [desktop, setDesktop] = useState(() =>
@@ -471,13 +478,14 @@ function Layout() {
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileOpen(false);
+      if (event.key === t("Escape")) setMobileOpen(false);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  if (pathname === "/login" || pathname.startsWith("/share/")) return <Outlet />;
+  if (pathname === "/login" || pathname === "/cast" || pathname.startsWith("/share/"))
+    return <Outlet />;
   return (
     <AriaRouterProvider
       navigate={(path) => navigate({ to: String(path) })}
@@ -490,12 +498,12 @@ function Layout() {
             className="fixed inset-0 z-50 flex"
             role="dialog"
             aria-modal="true"
-            aria-label={t("sidebar.dialog")}
+            aria-label={t("Navegación")}
           >
             <Button
               type="button"
               variant="ghost"
-              aria-label={t("sidebar.close")}
+              aria-label={t("Cerrar navegación")}
               className="absolute inset-0 h-full w-full rounded-none bg-black/55 backdrop-blur-sm"
               onPress={() => setMobileOpen(false)}
             />
@@ -506,7 +514,7 @@ function Layout() {
                 variant="ghost"
                 className="absolute right-3 top-3 size-9 rounded-xl"
                 onPress={() => setMobileOpen(false)}
-                aria-label={t("sidebar.close")}
+                aria-label={t("Cerrar navegación")}
               >
                 <CloseIcon className="size-4" />
               </Button>
@@ -537,7 +545,26 @@ export type RouterContext = {
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ context, location }) => {
-    if (location.pathname === "/login" || location.pathname.startsWith("/share/")) return;
+    if (location.pathname === "/my-drive" || location.pathname === "/recent") {
+      throw redirect({
+        to: "/files",
+        search: {
+          path: "/",
+          query: "",
+          view: "list",
+          ...(location.pathname === "/recent" ? { sort: "updatedAt", order: "desc" } : {}),
+        },
+        replace: true,
+      });
+    }
+    if (location.pathname === "/settings/account")
+      throw redirect({ to: "/settings", replace: true });
+    if (
+      location.pathname === "/login" ||
+      location.pathname === "/cast" ||
+      location.pathname.startsWith("/share/")
+    )
+      return;
     try {
       await context.queryClient.ensureQueryData(currentUserQueryOptions());
       await context.queryClient.ensureQueryData(preferencesQueryOptions());
@@ -552,4 +579,19 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     await importLegacyPreferences();
   },
   component: Layout,
+  notFoundComponent: () => (
+    <div className="mx-auto max-w-lg rounded-xl border border-border bg-surface p-6 text-foreground">
+      <h1 className="text-xl font-semibold">{t("Página no encontrada")}</h1>
+      <p className="my-4 text-muted">
+        {t("Esta dirección no está disponible. Puedes volver a tus archivos.")}
+      </p>
+      <Link
+        to="/files"
+        search={{ path: "/", query: "", view: "list", split: false }}
+        className={buttonVariants({ variant: "primary" })}
+      >
+        {t("Ir a mis archivos")}
+      </Link>
+    </div>
+  ),
 });

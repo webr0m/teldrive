@@ -1,3 +1,4 @@
+import { t } from "@/lib/localization";
 import { Button, Chip, Spinner } from "@heroui/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -8,7 +9,6 @@ import { userMessage } from "@/api/errors";
 import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
 import { SettingsPageHeader, SettingsRow, SettingsSection } from "@/components/settings-layout";
 import { getQueryClient } from "@/lib/queryClient";
-import { useAppLocale } from "@/lib/locale";
 import { useDateTimeFormatter } from "@/lib/format";
 
 export const Route = createFileRoute("/_settings/settings/sessions")({
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_settings/settings/sessions")({
 
 function SessionsSettings() {
   const [revokeSessionId, setRevokeSessionId] = useState<string | null>(null);
-  const { t } = useAppLocale();
+
   const formatDateTime = useDateTimeFormatter();
   const query = $api.useSuspenseQuery(
     "get",
@@ -38,23 +38,29 @@ function SessionsSettings() {
     onSuccess: () => {
       setRevokeSessionId(null);
       void refresh();
-      toast.success(t("sessions.revoked"));
+      toast.success(t("Sesión revocada"));
     },
     onError: (error) => {
-      toast.error(t("sessions.revokeFailed"), { description: userMessage(error) });
+      toast.error(t("No se pudo revocar la sesión"), { description: userMessage(error) });
     },
   });
 
   return (
     <div className="space-y-6">
-      <SettingsPageHeader title={t("sessions.title")} description={t("sessions.desc")} />
-      <SettingsSection title={t("sessions.active")} description={t("sessions.activeDesc")}>
+      <SettingsPageHeader
+        title={t("Sesiones")}
+        description={t("Sesiones autorizadas actualmente para esta cuenta.")}
+      />
+      <SettingsSection
+        title={t("Sesiones activas")}
+        description={t("Revoca las sesiones que no reconozcas o ya no utilices.")}
+      >
         {query.data.items.length ? (
           query.data.items.map((session) => (
             <SettingsRow
               key={session.id}
               label={t(session.current ? "sessions.current" : "sessions.other")}
-              description={t("sessions.createdLine", {
+              description={t("Created {created} · expires {expires}", {
                 created: formatDateTime.format(new Date(session.createdAt)),
                 expires: formatDateTime.format(new Date(session.expiresAt)),
               })}
@@ -62,14 +68,14 @@ function SessionsSettings() {
               <div className="flex items-center justify-end gap-2">
                 {session.current ? (
                   <Chip color="success" variant="tertiary">
-                    {t("sessions.currentChip")}
+                    {t("Actual")}
                   </Chip>
                 ) : (
                   <Button
                     isIconOnly
                     size="sm"
                     variant="ghost"
-                    aria-label={t("sessions.revokeAria")}
+                    aria-label={t("Revocar sesión")}
                     isDisabled={revoke.isPending && revokeSessionId === session.id}
                     onPress={() => setRevokeSessionId(session.id)}
                   >
@@ -80,7 +86,7 @@ function SessionsSettings() {
             </SettingsRow>
           ))
         ) : (
-          <div className="px-5 py-8 text-sm text-muted">{t("sessions.empty")}</div>
+          <div className="px-5 py-8 text-sm text-muted">{t("No se encontraron sesiones.")}</div>
         )}
       </SettingsSection>
       <ConfirmDialog
@@ -88,9 +94,9 @@ function SessionsSettings() {
         onOpenChange={(open) => {
           if (!open && !revoke.isPending) setRevokeSessionId(null);
         }}
-        title={t("sessions.dialogTitle")}
-        message={t("sessions.dialogMsg")}
-        confirmLabel={t("sessions.dialogConfirm")}
+        title={t("¿Revocar la sesión?")}
+        message={t("Este cliente tendrá que iniciar sesión de nuevo.")}
+        confirmLabel={t("Revocar sesión")}
         isPending={revoke.isPending}
         onConfirm={() => {
           if (revokeSessionId) {
