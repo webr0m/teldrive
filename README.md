@@ -1,56 +1,66 @@
+> **Teldrive v2.0.0-drive-es.10:** Desktop con pantalla completa, estadísticas de reproducción y bots identificados. [Descargar](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.10) · [GitLab](https://gitlab.com/ridrogo/teldrive/-/releases/v2.0.0-drive-es.10).
+
 # Teldrive
 
-## Edición personalizada para Windows en español
+The historical Windows 1.8.3 edition is preserved in
+[`windows-edition/`](windows-edition/README.md), with its original build instructions
+and licenses. The repository root contains the current v2 edition; the archived
+v1 sources are maintained separately.
 
-La edición 1.8.3 incluye un ejecutable Desktop independiente, CLI, temas, multimedia, papelera y configuración gráfica de rclone. [Ver fuentes e instrucciones](windows-edition/README.md) · [Descargar la edición 1.8.3](https://github.com/webr0m/teldrive/releases/tag/v1.8.3-drive-es.1).
+Telegram-backed file storage with a web interface, an HTTP API, and rclone integration.
 
-Las fuentes personalizadas están en `windows-edition/`. La raíz conserva la versión de Teldrive de `main`, con sus instrucciones a continuación.
+## Install
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/tgdrive/teldrive)
+Teldrive requires PostgreSQL and a Telegram account. Choose a deployment method:
 
-Teldrive is a powerful utility that enables you to organise your telegram files and much more.
+- [Linux and Windows binaries](https://tgdrive.github.io/teldrive/installation/binary)
+- [Nix, NixOS, and Home Manager](https://tgdrive.github.io/teldrive/installation/nix)
+- [Docker or Podman](https://tgdrive.github.io/teldrive/getting-started/quick-start)
+- [Build from source](https://tgdrive.github.io/teldrive/installation/from-source)
 
-## Advantages Over Alternative Solutions
+See the [documentation](https://tgdrive.github.io/teldrive/) for configuration, upgrades, and operations.
 
-- **Exceptional Speed:** Teldrive stands out among similar tools, thanks to its implementation in Go, a language known for its efficiency. Its performance surpasses alternatives written in Python and other languages, with the exception of Rust.
+## Public share links from a local server
 
-- **Enhanced Management Capabilities:** Teldrive not only excels in speed but also offers an intuitive user interface for efficient file interaction which other tool lacks. Its compatibility with Rclone further enhances file management.
+Set `http.public-url` to the public origin of your tunnel or reverse proxy so links
+copied from localhost or Teldrive Desktop use your domain:
 
-> [!IMPORTANT]
-> Teldrive functions as a wrapper over your Telegram account, simplifying file access. However, users must adhere to the limitations imposed by the Telegram API. Teldrive is not responsible for any consequences arising from non-compliance with these API limits.You will be banned instantly if you misuse telegram API.
+```toml
+[http]
+address = "127.0.0.1:8080"
+public-url = "https://drive.example.com"
+trusted-proxies = ["127.0.0.1/32", "::1/128"]
+```
 
-Visit https://teldrive-docs.pages.dev for setting up teldrive.
+The trusted proxy addresses above apply when the proxy runs on the same machine.
+Configure Cloudflare Tunnel (or your reverse proxy) to forward the public hostname
+to `http://127.0.0.1:8080`, then restart Teldrive. In Desktop, edit the existing
+`[http]` section under **Configuración → Configuración avanzada** and save it.
+This setting changes newly generated share URLs; it does not create a DNS record,
+a tunnel, or HTTPS. Existing share tokens remain valid under the new domain.
+An empty `public-url` keeps using the browser origin. Only an HTTP or HTTPS origin
+is accepted; credentials, subpaths, queries, and fragments are not supported.
+The equivalent CLI option is `--http-public-url`; the environment variable is
+`TELDRIVE_HTTP_PUBLIC_URL`.
 
-# Recognitions
+## Data safety
 
-<a href="https://trendshift.io/repositories/7568" target="_blank"><img src="https://trendshift.io/api/badge/repositories/7568" alt="divyam234%2Fteldrive | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-
-## Best Practices for Using Teldrive
-
-### Dos:
-
-- **Follow Limits:** Adhere to the limits imposed by Telegram servers to avoid account bans and automatic deletion of your channel.Your files will be removed from telegram servers if you try to abuse the service as most people have zero brains they will still do so good luck.
-- **Responsible Storage:** Be mindful of the content you store on Telegram. Utilize storage efficiently and only keep data that serves a purpose.
-
-### Don'ts:
-- **Data Hoarding:** Avoid excessive data hoarding, as it not only violates Telegram's terms.
-
-By following these guidelines, you contribute to the responsible and effective use of Telegram, maintaining a fair and equitable environment for all users.
+Follow Telegram's terms and API limits. Accounts and stored files can become unavailable; keep independent backups. Back up database credentials, signing keys, and encryption keys before upgrading.
 
 ## Contributing
 
-Feel free to contribute to this project.See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Supported development commands are in `justfile`.
 
 ## Donate
 
-If you like this project small contribution would be appreciated [Paypal](https://paypal.me/redux234).
+If you find Teldrive useful, consider a [PayPal donation](https://paypal.me/redux234).
 
 ## Star History
 
 <a href="https://www.star-history.com/#tgdrive/teldrive&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=tgdrive/teldrive&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=tgdrive/teldrive&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=tgdrive/teldrive&type=Date" />
- </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=tgdrive/teldrive&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=tgdrive/teldrive&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=tgdrive/teldrive&type=Date" />
+  </picture>
 </a>
