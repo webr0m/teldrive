@@ -1,3 +1,5 @@
+> **Teldrive v2.0.0-drive-es.10:** Desktop con pantalla completa, estadísticas de reproducción y bots identificados. [Descargar](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.10) · [GitLab](https://gitlab.com/ridrogo/teldrive/-/releases/v2.0.0-drive-es.10).
+
 # Teldrive
 
 Telegram-backed file storage with a web interface, an HTTP API, and rclone integration.
