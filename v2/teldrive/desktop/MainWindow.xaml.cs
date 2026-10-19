@@ -57,6 +57,7 @@ public partial class MainWindow : Window
                 requestedStartHidden = (preferences.StartInTray || args.Contains("--start-in-tray")) && runtime.State is not null && File.Exists(runtime.ConfigPath);
                 if (requestedStartHidden) { Opacity = 0; ShowInTaskbar = false; ShowActivated = false; tray!.HideWindowIcon(); }
             }
+            if (args.Contains("--smoke-window-reopen")) { await VerifyWindowReopenAsync(); exitRequested = true; Close(); return; }
             await runtime.PrepareAsync();
             if (args.Contains("--smoke-input")) {
                 var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0); listener.Start(); var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port; listener.Stop();
@@ -240,7 +241,11 @@ public partial class MainWindow : Window
     {
         if ((smoke && !testingTray) || closed || closing) return;
         requestedStartHidden = false; Opacity = smoke ? 0 : 1;
-        ShowInTaskbar = !smoke; Show(); WindowState = WindowState.Normal; if (!smoke) Activate(); tray?.Restored();
+        // Starting in the tray disables activation. WPF rejects Show() on a
+        // maximized window until activation is enabled again.
+        ShowActivated = true;
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        ShowInTaskbar = !smoke; Show(); if (!smoke) Activate(); tray?.Restored();
     }
     internal void VerifyTrayLifecycle()
     {

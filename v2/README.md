@@ -1,27 +1,19 @@
-# Teldrive v2.0.0-drive-es.10
+# Teldrive Desktop 2.0.0.11 — corrección de reapertura
 
-[GitLab](https://gitlab.com/ridrogo/teldrive/-/releases/v2.0.0-drive-es.10) · [GitHub](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.10).
+Corrige el error «No se puede mostrar Window cuando ShowActivated es false y WindowState está establecido en Maximized» al volver a abrir Desktop después de cerrarlo en la bandeja.
 
-# Teldrive v2.0.0-drive-es.10
-
-Integra las actualizaciones del original hasta `67bf180` y reúne las mejoras de bots y Desktop en una sola versión.
-
-- Bots identificados y ordenados por **nombre, @alias e ID**, con creación desde un gestor y recuperación de operaciones interrumpidas.
-- WebView2 usa el host de ventana nativo para evitar el error gráfico `0x8876086C` al iniciar o restaurar desde bandeja.
-- Menús de bandeja: las acciones se ejecutan al terminar el menú nativo, evitando la reentrada en WPF/WebView2; texto del icono limitado al tamaño de Windows.
-- **Pantalla completa** en vídeo web y reproductor nativo. En el nativo: botón, F/F11, doble clic y Esc, conservando la ventana anterior.
-- **Desarrollador · estadísticas** en audio/vídeo: datos de reproducción, pistas/códecs y búfer. Desktop nativo añade resolución, FPS, aceleración, tasas de bits, sincronización A/V, fotogramas perdidos y otros datos reales de mpv por IPC.
-- Telegram: cuenta real que recibe cada fragmento, nombre/@alias/ID, velocidad móvil de 2 s, bytes, solicitudes activas/total, errores, latencia y último canal/mensaje/offset. Las cifras suman las lecturas del archivo, incluidas búsquedas y otras reproducciones simultáneas; una velocidad cero puede indicar reproducción desde el búfer. Datos visibles para el propietario, sin claves/tokens/URL de reproducción.
-- Del original: provisión independiente de bots, gestión de carga y cuentas revocadas, favoritos/recientes, preferencias por cuenta, tamaños de carpetas, orden natural, búsqueda/lectores y descargas compartidas directas con autorización por cookie. Se conservan Spam, temas, diez idiomas, tareas, rclone y transmisión.
+La ventana se activa antes de mostrarse y conserva el estado maximizado. Se cubren la restauración desde la bandeja y abrir el ejecutable otra vez cuando ya sigue activo. Minimizar y restaurar devuelve la ventana a su estado normal.
 
 ## Actualización
 
-Cierra Desktop, conserva tu carpeta de datos y configuración, sustituye el ejecutable y vuelve a abrirlo. Las migraciones propias 8–10 se conservan; las nuevas pasan a 11–16. No regeneres claves ni repitas la migración. El paquete Windows incluye .NET, PostgreSQL, rclone, FFmpeg/FFprobe y mpv. Los CLI para Windows/Linux/macOS x64 y ARM64 necesitan PostgreSQL y FFmpeg externos. Android/iOS conservan sus clientes y usan la UI del servidor actualizado.
+En el icono de Teldrive de la bandeja, elige **Salir y detener servicios**. Descomprime el paquete nuevo y sustituye `Teldrive Desktop v2.exe`. Conserva tu carpeta de datos, configuración y claves. No ejecutes la configuración inicial otra vez. Si utilizas modo portátil, mantén `TeldriveData` junto al ejecutable.
 
-## Comprobaciones y límites
+Este es un hotfix de Windows Desktop: el servidor, UI y componentes integrados conservan la versión .10. Los seis paquetes CLI y los clientes móviles publicados anteriormente siguen siendo válidos y no se recompilan para este cambio. Las mejoras de bots, pantalla completa y estadísticas de .10 se conservan.
 
-Go unitario completo, vet, TypeSpec, TypeScript, lint y compilación de UI; regresiones de bots, búsqueda, preferencias, favoritos, descargas y estadísticas con API simulada. Prueba nativa de reproducción real con mpv, IPC, pausa, pantalla completa/restauración, panel de desarrollador y callbacks de bandeja. Arranque de PostgreSQL/WebView2 y actualización de una base anterior en carpetas aisladas. Los manifiestos incluyen las pruebas concretas ejecutadas y los SHA256.
+## Comprobaciones
 
-No se han usado bots ni credenciales reales de Telegram. El harness de integración PostgreSQL no pudo ejecutarse porque Docker no está disponible; las pruebas de autorización de estadísticas y reconciliación del esquema original se compilaron, pero necesitan ese harness para ejecutarse. Linux/macOS/ARM64 se compilan y verifican por arquitectura/metadatos, sin ejecución nativa. La prueba iPhone usa una ruta explícita al WebKit instalado. Los datos de mpv solo se muestran cuando el motor los proporciona; otros orígenes rclone mantienen los datos del reproductor sin atribuir cuentas de Telegram.
+Se reprodujo el error original con la implementación anterior. El ejecutable corregido se prueba en estado normal y maximizado, al cerrar y restaurar directamente, desde el menú de bandeja y lanzando un segundo proceso real, además de minimizar y restaurar. Se comprueban también el arranque de PostgreSQL/WebView2, pantalla completa y la reapertura desde un inicio en bandeja con una base de pruebas existente, conservando su configuración. Los resultados concretos se incluyen en `VALIDACION.json`.
 
-Fuentes en teldrive/ y rclone/. source-revisions.json conserva los commits originales; blobs y permisos se preservan.
+No se usan credenciales reales de Telegram. Este hotfix no añade migraciones ni modifica el servidor. El manifiesto identifica por separado la revisión de Desktop y la revisión del servidor integrado; los archivos y sus tamaños/SHA256 se verifican después de subirlos.
+
+Fuentes: `teldrive/` y `rclone/`; revisiones exactas en `source-revisions.json`.

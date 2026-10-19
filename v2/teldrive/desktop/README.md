@@ -2,6 +2,19 @@
 
 Aplicación para Windows 10/11 de 64 bits, construida con .NET 10, WPF y WebView2. El paquete incluye el servidor Teldrive, el rclone compatible con la API v2, PostgreSQL, FFmpeg/FFprobe y los instaladores oficiales de WinFsp, WebView2 y Visual C++. El primer inicio presenta la configuración del servidor y abre la UI en la propia ventana.
 
+## Reapertura desde la bandeja (2.0.0.11)
+
+Corrige el error de WPF al volver a mostrar una ventana maximizada después de
+iniciar en la bandeja y cerrarla. Se reactiva la ventana antes de mostrarla y se
+conserva su estado maximizado. La misma corrección cubre el menú de bandeja y
+abrir nuevamente el ejecutable cuando el programa sigue activo.
+
+`--smoke-window-reopen --data-root RUTA_NUEVA` comprueba cierre y reapertura
+en estado normal y maximizado, por restauración directa, menú de bandeja y un
+segundo proceso real; también comprueba minimizar y restaurar. No escribe
+configuración ni inicia servicios. El servidor y los componentes integrados de
+esta corrección de Desktop conservan la versión publicada en .10.
+
 ## Reproducción y diagnóstico (2.0.0.10)
 
 Pantalla completa está disponible en el vídeo de la ventana web y en el reproductor
