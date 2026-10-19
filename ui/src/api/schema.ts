@@ -259,6 +259,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return the authenticated user's web UI preferences, with server defaults for unset values. */
+        get: operations["getUserPreferences"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description Update a subset of the authenticated user's web UI preferences. */
+        patch: operations["updateUserPreferences"];
+        trace?: never;
+    };
     "/v1/auth/logout": {
         parameters: {
             query?: never;
@@ -1089,6 +1107,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/shares/{token}/download-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Exchange the share password for a 15-minute, share-scoped download cookie. */
+        post: operations["authorizePublicShareDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/shares/{token}": {
         parameters: {
             query?: never;
@@ -1626,6 +1661,79 @@ export interface components {
             createdAt: string;
         };
         ETag: string;
+        /** @enum {string} */
+        NameConflictPolicy: "fail" | "replace" | "rename";
+        UploadPreferences: {
+            /** @description Encrypt new browser uploads and URL imports by default. */
+            encryption: boolean;
+            conflictPolicy: components["schemas"]["NameConflictPolicy"];
+            /**
+             * Format: int32
+             * @description Number of browser uploads that run at the same time.
+             */
+            concurrency: number;
+            /**
+             * Format: int64
+             * @description Preferred part size in bytes; a multiple of 16 MiB between 16 MiB and 2 GiB.
+             */
+            preferredPartSize: number;
+        };
+        /**
+         * @description Sort keys offered by the web file browser; a subset of FileSort.
+         * @enum {string}
+         */
+        FileBrowserSort: "name" | "updatedAt" | "size";
+        /** @enum {string} */
+        SortOrder: "asc" | "desc";
+        FileBrowserPreferences: {
+            sort: components["schemas"]["FileBrowserSort"];
+            order: components["schemas"]["SortOrder"];
+        };
+        /** @enum {string} */
+        ThemePreference: "system" | "light" | "dark";
+        /** @enum {string} */
+        InterfaceLocale: "en" | "es" | "pt-BR" | "ru" | "fr" | "de" | "zh-CN";
+        AppearancePreferences: {
+            theme: components["schemas"]["ThemePreference"];
+            /** @description Interface language; absent until the user picks one, so clients fall back to browser detection. */
+            locale?: components["schemas"]["InterfaceLocale"];
+        };
+        /** @description Per-user web UI preferences shared by every browser and device. */
+        UserPreferences: {
+            uploads: components["schemas"]["UploadPreferences"];
+            files: components["schemas"]["FileBrowserPreferences"];
+            appearance: components["schemas"]["AppearancePreferences"];
+            /**
+             * Format: date-time
+             * @description Last explicit change; absent while every value is still the server default.
+             */
+            updatedAt?: string;
+        };
+        UploadPreferencesUpdate: {
+            encryption?: boolean;
+            conflictPolicy?: components["schemas"]["NameConflictPolicy"];
+            /** Format: int32 */
+            concurrency?: number;
+            /**
+             * Format: int64
+             * @description Preferred part size in bytes; a multiple of 16 MiB between 16 MiB and 2 GiB.
+             */
+            preferredPartSize?: number;
+        };
+        FileBrowserPreferencesUpdate: {
+            sort?: components["schemas"]["FileBrowserSort"];
+            order?: components["schemas"]["SortOrder"];
+        };
+        AppearancePreferencesUpdate: {
+            theme?: components["schemas"]["ThemePreference"];
+            locale?: components["schemas"]["InterfaceLocale"];
+        };
+        /** @description Partial update; omitted groups and fields keep their stored values. */
+        UserPreferencesUpdate: {
+            uploads?: components["schemas"]["UploadPreferencesUpdate"];
+            files?: components["schemas"]["FileBrowserPreferencesUpdate"];
+            appearance?: components["schemas"]["AppearancePreferencesUpdate"];
+        };
         UserSearchResult: {
             /** Format: int64 */
             userId: number;
@@ -1760,8 +1868,6 @@ export interface components {
         /** @enum {string} */
         FileSort: "name" | "updatedAt" | "size" | "id";
         /** @enum {string} */
-        SortOrder: "asc" | "desc";
-        /** @enum {string} */
         HashAlgorithm: "blake3";
         Checksum: string;
         FileHash: {
@@ -1798,8 +1904,6 @@ export interface components {
             /** Format: date-time */
             modTime?: string;
         };
-        /** @enum {string} */
-        NameConflictPolicy: "fail" | "replace" | "rename";
         FileMoveRequest: {
             parentId?: components["schemas"]["Uuid"];
             /** @default fail */
@@ -2358,6 +2462,7 @@ export interface components {
         /** @description Folder path relative to the shared folder root. */
         "PublicShareListQuery.path": string;
         "PublicShareListQuery.search": string;
+        ShareDownloadCookie: string;
         "JobListQuery.status": components["schemas"]["JobState"];
         "JobListQuery.type": string;
         "JobListQuery.queue": string;
@@ -3191,6 +3296,77 @@ export interface operations {
             };
             /** @description Client error */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getUserPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPreferences"];
+                };
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateUserPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserPreferencesUpdate"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPreferences"];
+                };
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Client error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6558,6 +6734,66 @@ export interface operations {
             };
         };
     };
+    authorizePublicShareDownload: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Share-Password"?: components["parameters"]["SharePasswordHeader"];
+            };
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    "Set-Cookie": string;
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Client error */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Client error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getPublicShare: {
         parameters: {
             query?: never;
@@ -6712,7 +6948,9 @@ export interface operations {
                 fileId: components["schemas"]["Uuid"];
                 fileName: string;
             };
-            cookie?: never;
+            cookie?: {
+                teldrive_share_download?: components["parameters"]["ShareDownloadCookie"];
+            };
         };
         requestBody?: never;
         responses: {
@@ -6819,7 +7057,9 @@ export interface operations {
                 fileId: components["schemas"]["Uuid"];
                 fileName: string;
             };
-            cookie?: never;
+            cookie?: {
+                teldrive_share_download?: components["parameters"]["ShareDownloadCookie"];
+            };
         };
         requestBody?: never;
         responses: {
@@ -6897,7 +7137,9 @@ export interface operations {
                 token: string;
                 fileName: string;
             };
-            cookie?: never;
+            cookie?: {
+                teldrive_share_download?: components["parameters"]["ShareDownloadCookie"];
+            };
         };
         requestBody?: never;
         responses: {
@@ -7003,7 +7245,9 @@ export interface operations {
                 token: string;
                 fileName: string;
             };
-            cookie?: never;
+            cookie?: {
+                teldrive_share_download?: components["parameters"]["ShareDownloadCookie"];
+            };
         };
         requestBody?: never;
         responses: {
@@ -7081,7 +7325,9 @@ export interface operations {
                 token: string;
                 fileId: components["schemas"]["Uuid"];
             };
-            cookie?: never;
+            cookie?: {
+                teldrive_share_download?: components["parameters"]["ShareDownloadCookie"];
+            };
         };
         requestBody?: never;
         responses: {
@@ -7187,7 +7433,9 @@ export interface operations {
                 token: string;
                 fileId: components["schemas"]["Uuid"];
             };
-            cookie?: never;
+            cookie?: {
+                teldrive_share_download?: components["parameters"]["ShareDownloadCookie"];
+            };
         };
         requestBody?: never;
         responses: {
@@ -7264,7 +7512,9 @@ export interface operations {
             path: {
                 token: string;
             };
-            cookie?: never;
+            cookie?: {
+                teldrive_share_download?: components["parameters"]["ShareDownloadCookie"];
+            };
         };
         requestBody?: never;
         responses: {
@@ -7369,7 +7619,9 @@ export interface operations {
             path: {
                 token: string;
             };
-            cookie?: never;
+            cookie?: {
+                teldrive_share_download?: components["parameters"]["ShareDownloadCookie"];
+            };
         };
         requestBody?: never;
         responses: {

@@ -9,6 +9,10 @@ type AbortUploadRes interface {
 	abortUploadRes()
 }
 
+type AuthorizePublicShareDownloadRes interface {
+	authorizePublicShareDownloadRes()
+}
+
 type BookmarkFilesRes interface {
 	bookmarkFilesRes()
 }
@@ -203,6 +207,10 @@ type GetUploadRes interface {
 
 type GetUploadStatisticsRes interface {
 	getUploadStatisticsRes()
+}
+
+type GetUserPreferencesRes interface {
+	getUserPreferencesRes()
 }
 
 type HeadFileLegacyRes interface {
@@ -463,4 +471,8 @@ type UpdatePublicShareFileRes interface {
 
 type UpdateShareRes interface {
 	updateShareRes()
+}
+
+type UpdateUserPreferencesRes interface {
+	updateUserPreferencesRes()
 }

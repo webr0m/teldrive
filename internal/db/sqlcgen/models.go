@@ -564,6 +564,13 @@ type Session struct {
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 }
 
+type ShareDownloadSession struct {
+	TokenHash    []byte             `json:"token_hash"`
+	ShareID      pgtype.UUID        `json:"share_id"`
+	PasswordHash pgtype.Text        `json:"password_hash"`
+	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
+}
+
 type TelegramLoginFlow struct {
 	ID                      pgtype.UUID         `json:"id"`
 	Method                  TelegramLoginMethod `json:"method"`
@@ -642,4 +649,18 @@ type UserEventStreamState struct {
 	UserID      int64              `json:"user_id"`
 	LastEventID int64              `json:"last_event_id"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type UserPreference struct {
+	UserID               int64              `json:"user_id"`
+	UploadEncryption     bool               `json:"upload_encryption"`
+	UploadConflictPolicy NameConflictPolicy `json:"upload_conflict_policy"`
+	UploadConcurrency    int32              `json:"upload_concurrency"`
+	UploadPartSize       int64              `json:"upload_part_size"`
+	FileSort             string             `json:"file_sort"`
+	FileOrder            string             `json:"file_order"`
+	Theme                string             `json:"theme"`
+	Locale               pgtype.Text        `json:"locale"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }

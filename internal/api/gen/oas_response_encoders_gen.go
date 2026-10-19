@@ -11,11 +11,9 @@ import (
 	"github.com/go-faster/jx"
 	"github.com/ogen-go/ogen/conv"
 	"github.com/ogen-go/ogen/uri"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 )
 
-func encodeAbortPublicShareUploadResponse(response AbortPublicShareUploadRes, w http.ResponseWriter, span trace.Span) error {
+func encodeAbortPublicShareUploadResponse(response AbortPublicShareUploadRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *AbortPublicShareUploadNoContent:
 		w.WriteHeader(204)
@@ -75,7 +73,7 @@ func encodeAbortPublicShareUploadResponse(response AbortPublicShareUploadRes, w 
 	}
 }
 
-func encodeAbortUploadResponse(response AbortUploadRes, w http.ResponseWriter, span trace.Span) error {
+func encodeAbortUploadResponse(response AbortUploadRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *AbortUploadNoContent:
 		w.WriteHeader(204)
@@ -123,7 +121,96 @@ func encodeAbortUploadResponse(response AbortUploadRes, w http.ResponseWriter, s
 	}
 }
 
-func encodeBookmarkFilesResponse(response BookmarkFilesRes, w http.ResponseWriter, span trace.Span) error {
+func encodeAuthorizePublicShareDownloadResponse(response AuthorizePublicShareDownloadRes, w http.ResponseWriter) error {
+	switch response := response.(type) {
+	case *AuthorizePublicShareDownloadNoContent:
+		w.Header().Set("Access-Control-Expose-Headers", "Set-Cookie")
+		// Encoding response headers.
+		{
+			h := uri.NewHeaderEncoder(w.Header())
+			// Encode "Cache-Control" header.
+			{
+				cfg := uri.HeaderParameterEncodingConfig{
+					Name:    "Cache-Control",
+					Explode: false,
+				}
+				if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+					return e.EncodeValue(conv.StringToString(string(response.CacheControl)))
+				}); err != nil {
+					return errors.Wrap(err, "encode Cache-Control header")
+				}
+			}
+			// Encode "Set-Cookie" header.
+			{
+				cfg := uri.HeaderParameterEncodingConfig{
+					Name:    "Set-Cookie",
+					Explode: false,
+				}
+				if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+					return e.EncodeValue(conv.StringToString(response.SetCookie))
+				}); err != nil {
+					return errors.Wrap(err, "encode Set-Cookie header")
+				}
+			}
+		}
+		w.WriteHeader(204)
+
+		return nil
+
+	case *AuthorizePublicShareDownloadUnauthorized:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *AuthorizePublicShareDownloadNotFound:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *AuthorizePublicShareDownloadGone:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(410)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *AuthorizePublicShareDownloadTooManyRequests:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(429)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
+func encodeBookmarkFilesResponse(response BookmarkFilesRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *BookmarkFilesNoContent:
 		w.WriteHeader(204)
@@ -171,7 +258,7 @@ func encodeBookmarkFilesResponse(response BookmarkFilesRes, w http.ResponseWrite
 	}
 }
 
-func encodeBulkMoveFilesResponse(response BulkMoveFilesRes, w http.ResponseWriter, span trace.Span) error {
+func encodeBulkMoveFilesResponse(response BulkMoveFilesRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *FileBulkResult:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -238,7 +325,7 @@ func encodeBulkMoveFilesResponse(response BulkMoveFilesRes, w http.ResponseWrite
 	}
 }
 
-func encodeBulkTrashFilesResponse(response BulkTrashFilesRes, w http.ResponseWriter, span trace.Span) error {
+func encodeBulkTrashFilesResponse(response BulkTrashFilesRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *FileBulkResult:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -305,7 +392,7 @@ func encodeBulkTrashFilesResponse(response BulkTrashFilesRes, w http.ResponseWri
 	}
 }
 
-func encodeCancelJobResponse(response CancelJobRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCancelJobResponse(response CancelJobRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *Job:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -360,7 +447,7 @@ func encodeCancelJobResponse(response CancelJobRes, w http.ResponseWriter, span 
 	}
 }
 
-func encodeCleanTrashResponse(response CleanTrashRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCleanTrashResponse(response CleanTrashRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *CleanTrashNoContent:
 		w.WriteHeader(204)
@@ -384,7 +471,7 @@ func encodeCleanTrashResponse(response CleanTrashRes, w http.ResponseWriter, spa
 	}
 }
 
-func encodeCompletePublicShareUploadResponse(response CompletePublicShareUploadRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCompletePublicShareUploadResponse(response CompletePublicShareUploadRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *CompletePublicShareUploadOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -557,7 +644,7 @@ func encodeCompletePublicShareUploadResponse(response CompletePublicShareUploadR
 	}
 }
 
-func encodeCompleteUploadResponse(response CompleteUploadRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCompleteUploadResponse(response CompleteUploadRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *CompleteUploadOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -718,7 +805,7 @@ func encodeCompleteUploadResponse(response CompleteUploadRes, w http.ResponseWri
 	}
 }
 
-func encodeCookieTelegramLoginVerifyCodeResponse(response CookieTelegramLoginVerifyCodeRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCookieTelegramLoginVerifyCodeResponse(response CookieTelegramLoginVerifyCodeRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *CookieSessionHeaders:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -835,7 +922,7 @@ func encodeCookieTelegramLoginVerifyCodeResponse(response CookieTelegramLoginVer
 	}
 }
 
-func encodeCookieTelegramLoginVerifyPasswordResponse(response CookieTelegramLoginVerifyPasswordRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCookieTelegramLoginVerifyPasswordResponse(response CookieTelegramLoginVerifyPasswordRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *CookieSessionHeaders:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -940,7 +1027,7 @@ func encodeCookieTelegramLoginVerifyPasswordResponse(response CookieTelegramLogi
 	}
 }
 
-func encodeCookieTelegramQRLoginPollResponse(response CookieTelegramQRLoginPollRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCookieTelegramQRLoginPollResponse(response CookieTelegramQRLoginPollRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *CookieSessionHeaders:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1057,7 +1144,7 @@ func encodeCookieTelegramQRLoginPollResponse(response CookieTelegramQRLoginPollR
 	}
 }
 
-func encodeCopyFileResponse(response CopyFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCopyFileResponse(response CopyFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *CopyFileCreatedHeaders:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1159,7 +1246,7 @@ func encodeCopyFileResponse(response CopyFileRes, w http.ResponseWriter, span tr
 	}
 }
 
-func encodeCreateApiKeyResponse(response CreateApiKeyRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreateApiKeyResponse(response CreateApiKeyRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ApiKeyCreated:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1214,7 +1301,7 @@ func encodeCreateApiKeyResponse(response CreateApiKeyRes, w http.ResponseWriter,
 	}
 }
 
-func encodeCreateBotsResponse(response CreateBotsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreateBotsResponse(response CreateBotsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *BotCreateResponse:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1281,7 +1368,7 @@ func encodeCreateBotsResponse(response CreateBotsRes, w http.ResponseWriter, spa
 	}
 }
 
-func encodeCreateChannelResponse(response CreateChannelRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreateChannelResponse(response CreateChannelRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ChannelSummary:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1348,7 +1435,7 @@ func encodeCreateChannelResponse(response CreateChannelRes, w http.ResponseWrite
 	}
 }
 
-func encodeCreateEventStreamTicketResponse(response CreateEventStreamTicketRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreateEventStreamTicketResponse(response CreateEventStreamTicketRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *EventStreamTicket:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1377,7 +1464,6 @@ func encodeCreateEventStreamTicketResponse(response CreateEventStreamTicketRes, 
 	case *CreateEventStreamTicketServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -1392,7 +1478,7 @@ func encodeCreateEventStreamTicketResponse(response CreateEventStreamTicketRes, 
 	}
 }
 
-func encodeCreateFileAccessGrantResponse(response CreateFileAccessGrantRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreateFileAccessGrantResponse(response CreateFileAccessGrantRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *FileAccessGrantSummary:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1459,7 +1545,7 @@ func encodeCreateFileAccessGrantResponse(response CreateFileAccessGrantRes, w ht
 	}
 }
 
-func encodeCreateFolderResponse(response CreateFolderRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreateFolderResponse(response CreateFolderRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *CopyFileCreatedHeaders:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1561,7 +1647,7 @@ func encodeCreateFolderResponse(response CreateFolderRes, w http.ResponseWriter,
 	}
 }
 
-func encodeCreateJobResponse(response CreateJobRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreateJobResponse(response CreateJobRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *Job:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1616,7 +1702,7 @@ func encodeCreateJobResponse(response CreateJobRes, w http.ResponseWriter, span 
 	}
 }
 
-func encodeCreatePeriodicJobResponse(response CreatePeriodicJobRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreatePeriodicJobResponse(response CreatePeriodicJobRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *PeriodicJob:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1671,7 +1757,7 @@ func encodeCreatePeriodicJobResponse(response CreatePeriodicJobRes, w http.Respo
 	}
 }
 
-func encodeCreatePublicShareFolderResponse(response CreatePublicShareFolderRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreatePublicShareFolderResponse(response CreatePublicShareFolderRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *FileEntry:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1750,7 +1836,7 @@ func encodeCreatePublicShareFolderResponse(response CreatePublicShareFolderRes, 
 	}
 }
 
-func encodeCreatePublicShareUploadResponse(response CreatePublicShareUploadRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreatePublicShareUploadResponse(response CreatePublicShareUploadRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *UploadSession:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1841,7 +1927,7 @@ func encodeCreatePublicShareUploadResponse(response CreatePublicShareUploadRes, 
 	}
 }
 
-func encodeCreateShareResponse(response CreateShareRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreateShareResponse(response CreateShareRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ShareCreated:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1908,7 +1994,7 @@ func encodeCreateShareResponse(response CreateShareRes, w http.ResponseWriter, s
 	}
 }
 
-func encodeCreateUploadResponse(response CreateUploadRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreateUploadResponse(response CreateUploadRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *UploadSession:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1999,7 +2085,7 @@ func encodeCreateUploadResponse(response CreateUploadRes, w http.ResponseWriter,
 	}
 }
 
-func encodeCreateUploadImportResponse(response CreateUploadImportRes, w http.ResponseWriter, span trace.Span) error {
+func encodeCreateUploadImportResponse(response CreateUploadImportRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *Job:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -2052,7 +2138,6 @@ func encodeCreateUploadImportResponse(response CreateUploadImportRes, w http.Res
 	case *CreateUploadImportServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -2067,7 +2152,7 @@ func encodeCreateUploadImportResponse(response CreateUploadImportRes, w http.Res
 	}
 }
 
-func encodeDeleteBotResponse(response DeleteBotRes, w http.ResponseWriter, span trace.Span) error {
+func encodeDeleteBotResponse(response DeleteBotRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DeleteBotNoContent:
 		w.WriteHeader(204)
@@ -2115,7 +2200,7 @@ func encodeDeleteBotResponse(response DeleteBotRes, w http.ResponseWriter, span 
 	}
 }
 
-func encodeDeleteChannelResponse(response DeleteChannelRes, w http.ResponseWriter, span trace.Span) error {
+func encodeDeleteChannelResponse(response DeleteChannelRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DeleteChannelNoContent:
 		w.WriteHeader(204)
@@ -2163,7 +2248,7 @@ func encodeDeleteChannelResponse(response DeleteChannelRes, w http.ResponseWrite
 	}
 }
 
-func encodeDeleteFileViewStateResponse(response DeleteFileViewStateRes, w http.ResponseWriter, span trace.Span) error {
+func encodeDeleteFileViewStateResponse(response DeleteFileViewStateRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DeleteFileViewStateNoContent:
 		w.WriteHeader(204)
@@ -2187,7 +2272,7 @@ func encodeDeleteFileViewStateResponse(response DeleteFileViewStateRes, w http.R
 	}
 }
 
-func encodeDeleteJobResponse(response DeleteJobRes, w http.ResponseWriter, span trace.Span) error {
+func encodeDeleteJobResponse(response DeleteJobRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DeleteJobNoContent:
 		w.WriteHeader(204)
@@ -2235,7 +2320,7 @@ func encodeDeleteJobResponse(response DeleteJobRes, w http.ResponseWriter, span 
 	}
 }
 
-func encodeDeletePeriodicJobResponse(response DeletePeriodicJobRes, w http.ResponseWriter, span trace.Span) error {
+func encodeDeletePeriodicJobResponse(response DeletePeriodicJobRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DeletePeriodicJobNoContent:
 		w.WriteHeader(204)
@@ -2271,7 +2356,7 @@ func encodeDeletePeriodicJobResponse(response DeletePeriodicJobRes, w http.Respo
 	}
 }
 
-func encodeDiscoverChannelsResponse(response DiscoverChannelsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeDiscoverChannelsResponse(response DiscoverChannelsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DiscoverChannelsOKApplicationJSON:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -2314,7 +2399,7 @@ func encodeDiscoverChannelsResponse(response DiscoverChannelsRes, w http.Respons
 	}
 }
 
-func encodeDownloadFileResponse(response DownloadFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodeDownloadFileResponse(response DownloadFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DownloadFileNotModified:
 		w.WriteHeader(304)
@@ -2372,7 +2457,6 @@ func encodeDownloadFileResponse(response DownloadFileRes, w http.ResponseWriter,
 	case *DownloadFileServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -2387,7 +2471,7 @@ func encodeDownloadFileResponse(response DownloadFileRes, w http.ResponseWriter,
 	}
 }
 
-func encodeDownloadFileLegacyResponse(response DownloadFileLegacyRes, w http.ResponseWriter, span trace.Span) error {
+func encodeDownloadFileLegacyResponse(response DownloadFileLegacyRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DownloadFileLegacyNotModified:
 		w.WriteHeader(304)
@@ -2445,7 +2529,6 @@ func encodeDownloadFileLegacyResponse(response DownloadFileLegacyRes, w http.Res
 	case *DownloadFileLegacyServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -2460,7 +2543,7 @@ func encodeDownloadFileLegacyResponse(response DownloadFileLegacyRes, w http.Res
 	}
 }
 
-func encodeDownloadPublicShareResponse(response DownloadPublicShareRes, w http.ResponseWriter, span trace.Span) error {
+func encodeDownloadPublicShareResponse(response DownloadPublicShareRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DownloadPublicShareNotModified:
 		w.WriteHeader(304)
@@ -2530,7 +2613,6 @@ func encodeDownloadPublicShareResponse(response DownloadPublicShareRes, w http.R
 	case *DownloadPublicShareServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -2545,7 +2627,7 @@ func encodeDownloadPublicShareResponse(response DownloadPublicShareRes, w http.R
 	}
 }
 
-func encodeDownloadPublicShareFileResponse(response DownloadPublicShareFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodeDownloadPublicShareFileResponse(response DownloadPublicShareFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DownloadPublicShareFileNotModified:
 		w.WriteHeader(304)
@@ -2615,7 +2697,6 @@ func encodeDownloadPublicShareFileResponse(response DownloadPublicShareFileRes, 
 	case *DownloadPublicShareFileServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -2630,7 +2711,7 @@ func encodeDownloadPublicShareFileResponse(response DownloadPublicShareFileRes, 
 	}
 }
 
-func encodeDownloadPublicShareFileLegacyResponse(response DownloadPublicShareFileLegacyRes, w http.ResponseWriter, span trace.Span) error {
+func encodeDownloadPublicShareFileLegacyResponse(response DownloadPublicShareFileLegacyRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DownloadPublicShareFileLegacyNotModified:
 		w.WriteHeader(304)
@@ -2700,7 +2781,6 @@ func encodeDownloadPublicShareFileLegacyResponse(response DownloadPublicShareFil
 	case *DownloadPublicShareFileLegacyServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -2715,7 +2795,7 @@ func encodeDownloadPublicShareFileLegacyResponse(response DownloadPublicShareFil
 	}
 }
 
-func encodeDownloadPublicShareLegacyResponse(response DownloadPublicShareLegacyRes, w http.ResponseWriter, span trace.Span) error {
+func encodeDownloadPublicShareLegacyResponse(response DownloadPublicShareLegacyRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DownloadPublicShareLegacyNotModified:
 		w.WriteHeader(304)
@@ -2785,7 +2865,6 @@ func encodeDownloadPublicShareLegacyResponse(response DownloadPublicShareLegacyR
 	case *DownloadPublicShareLegacyServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -2800,7 +2879,7 @@ func encodeDownloadPublicShareLegacyResponse(response DownloadPublicShareLegacyR
 	}
 }
 
-func encodeGetCurrentUserResponse(response GetCurrentUserRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetCurrentUserResponse(response GetCurrentUserRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *UserProfile:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -2831,7 +2910,7 @@ func encodeGetCurrentUserResponse(response GetCurrentUserRes, w http.ResponseWri
 	}
 }
 
-func encodeGetDriveStatisticsResponse(response GetDriveStatisticsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetDriveStatisticsResponse(response GetDriveStatisticsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *DriveStatistics:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -2862,7 +2941,7 @@ func encodeGetDriveStatisticsResponse(response GetDriveStatisticsRes, w http.Res
 	}
 }
 
-func encodeGetFileResponse(response GetFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetFileResponse(response GetFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *FileEntryHeaders:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -2925,7 +3004,7 @@ func encodeGetFileResponse(response GetFileRes, w http.ResponseWriter, span trac
 	}
 }
 
-func encodeGetFileCategoryStatisticsResponse(response GetFileCategoryStatisticsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetFileCategoryStatisticsResponse(response GetFileCategoryStatisticsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *GetFileCategoryStatisticsOKApplicationJSON:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -2956,7 +3035,7 @@ func encodeGetFileCategoryStatisticsResponse(response GetFileCategoryStatisticsR
 	}
 }
 
-func encodeGetFileViewStateResponse(response GetFileViewStateRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetFileViewStateResponse(response GetFileViewStateRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *FileViewState:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -3004,7 +3083,7 @@ func encodeGetFileViewStateResponse(response GetFileViewStateRes, w http.Respons
 	}
 }
 
-func encodeGetJobResponse(response GetJobRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetJobResponse(response GetJobRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *Job:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -3047,7 +3126,7 @@ func encodeGetJobResponse(response GetJobRes, w http.ResponseWriter, span trace.
 	}
 }
 
-func encodeGetJobStatisticsResponse(response GetJobStatisticsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetJobStatisticsResponse(response GetJobStatisticsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *JobStatistics:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -3078,7 +3157,7 @@ func encodeGetJobStatisticsResponse(response GetJobStatisticsRes, w http.Respons
 	}
 }
 
-func encodeGetPeriodicJobCatalogResponse(response GetPeriodicJobCatalogRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetPeriodicJobCatalogResponse(response GetPeriodicJobCatalogRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *PeriodicJobCatalog:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -3109,7 +3188,7 @@ func encodeGetPeriodicJobCatalogResponse(response GetPeriodicJobCatalogRes, w ht
 	}
 }
 
-func encodeGetProfilePhotoResponse(response GetProfilePhotoRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetProfilePhotoResponse(response GetProfilePhotoRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *GetProfilePhotoOKHeaders:
 		w.Header().Set("Content-Type", "application/octet-stream")
@@ -3215,7 +3294,7 @@ func encodeGetProfilePhotoResponse(response GetProfilePhotoRes, w http.ResponseW
 	}
 }
 
-func encodeGetPublicShareResponse(response GetPublicShareRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetPublicShareResponse(response GetPublicShareRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *PublicShare:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -3282,7 +3361,7 @@ func encodeGetPublicShareResponse(response GetPublicShareRes, w http.ResponseWri
 	}
 }
 
-func encodeGetStorageStatsResponse(response GetStorageStatsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetStorageStatsResponse(response GetStorageStatsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *StorageDashboard:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -3313,7 +3392,7 @@ func encodeGetStorageStatsResponse(response GetStorageStatsRes, w http.ResponseW
 	}
 }
 
-func encodeGetUploadResponse(response GetUploadRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetUploadResponse(response GetUploadRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *UploadSession:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -3368,7 +3447,7 @@ func encodeGetUploadResponse(response GetUploadRes, w http.ResponseWriter, span 
 	}
 }
 
-func encodeGetUploadStatisticsResponse(response GetUploadStatisticsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetUploadStatisticsResponse(response GetUploadStatisticsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *GetUploadStatisticsOKApplicationJSON:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -3411,7 +3490,38 @@ func encodeGetUploadStatisticsResponse(response GetUploadStatisticsRes, w http.R
 	}
 }
 
-func encodeHeadFileResponse(response HeadFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodeGetUserPreferencesResponse(response GetUserPreferencesRes, w http.ResponseWriter) error {
+	switch response := response.(type) {
+	case *UserPreferences:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ErrorEnvelope:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
+func encodeHeadFileResponse(response HeadFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *HeadFileOK:
 		w.Header().Set("Access-Control-Expose-Headers", "Accept-Ranges,Content-Disposition,Etag")
@@ -3515,7 +3625,7 @@ func encodeHeadFileResponse(response HeadFileRes, w http.ResponseWriter, span tr
 	}
 }
 
-func encodeHeadFileLegacyResponse(response HeadFileLegacyRes, w http.ResponseWriter, span trace.Span) error {
+func encodeHeadFileLegacyResponse(response HeadFileLegacyRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *HeadFileLegacyOK:
 		w.Header().Set("Access-Control-Expose-Headers", "Accept-Ranges,Content-Disposition,Etag")
@@ -3619,7 +3729,7 @@ func encodeHeadFileLegacyResponse(response HeadFileLegacyRes, w http.ResponseWri
 	}
 }
 
-func encodeHeadPublicShareResponse(response HeadPublicShareRes, w http.ResponseWriter, span trace.Span) error {
+func encodeHeadPublicShareResponse(response HeadPublicShareRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *HeadPublicShareOK:
 		w.Header().Set("Access-Control-Expose-Headers", "Accept-Ranges,Content-Disposition,Etag")
@@ -3745,7 +3855,6 @@ func encodeHeadPublicShareResponse(response HeadPublicShareRes, w http.ResponseW
 	case *HeadPublicShareServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -3760,7 +3869,7 @@ func encodeHeadPublicShareResponse(response HeadPublicShareRes, w http.ResponseW
 	}
 }
 
-func encodeHeadPublicShareFileResponse(response HeadPublicShareFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodeHeadPublicShareFileResponse(response HeadPublicShareFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *HeadPublicShareFileOK:
 		w.Header().Set("Access-Control-Expose-Headers", "Accept-Ranges,Content-Disposition,Etag")
@@ -3886,7 +3995,6 @@ func encodeHeadPublicShareFileResponse(response HeadPublicShareFileRes, w http.R
 	case *HeadPublicShareFileServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -3901,7 +4009,7 @@ func encodeHeadPublicShareFileResponse(response HeadPublicShareFileRes, w http.R
 	}
 }
 
-func encodeHeadPublicShareFileLegacyResponse(response HeadPublicShareFileLegacyRes, w http.ResponseWriter, span trace.Span) error {
+func encodeHeadPublicShareFileLegacyResponse(response HeadPublicShareFileLegacyRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *HeadPublicShareFileLegacyOK:
 		w.Header().Set("Access-Control-Expose-Headers", "Accept-Ranges,Content-Disposition,Etag")
@@ -4027,7 +4135,6 @@ func encodeHeadPublicShareFileLegacyResponse(response HeadPublicShareFileLegacyR
 	case *HeadPublicShareFileLegacyServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -4042,7 +4149,7 @@ func encodeHeadPublicShareFileLegacyResponse(response HeadPublicShareFileLegacyR
 	}
 }
 
-func encodeHeadPublicShareLegacyResponse(response HeadPublicShareLegacyRes, w http.ResponseWriter, span trace.Span) error {
+func encodeHeadPublicShareLegacyResponse(response HeadPublicShareLegacyRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *HeadPublicShareLegacyOK:
 		w.Header().Set("Access-Control-Expose-Headers", "Accept-Ranges,Content-Disposition,Etag")
@@ -4168,7 +4275,6 @@ func encodeHeadPublicShareLegacyResponse(response HeadPublicShareLegacyRes, w ht
 	case *HeadPublicShareLegacyServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -4183,7 +4289,7 @@ func encodeHeadPublicShareLegacyResponse(response HeadPublicShareLegacyRes, w ht
 	}
 }
 
-func encodeHealthLiveResponse(response *HealthStatus, w http.ResponseWriter, span trace.Span) error {
+func encodeHealthLiveResponse(response *HealthStatus, w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 
@@ -4196,7 +4302,7 @@ func encodeHealthLiveResponse(response *HealthStatus, w http.ResponseWriter, spa
 	return nil
 }
 
-func encodeHealthReadyResponse(response HealthReadyRes, w http.ResponseWriter, span trace.Span) error {
+func encodeHealthReadyResponse(response HealthReadyRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *HealthStatus:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4213,7 +4319,6 @@ func encodeHealthReadyResponse(response HealthReadyRes, w http.ResponseWriter, s
 	case *ErrorEnvelope:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -4228,7 +4333,7 @@ func encodeHealthReadyResponse(response HealthReadyRes, w http.ResponseWriter, s
 	}
 }
 
-func encodeListAdminUsersResponse(response ListAdminUsersRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListAdminUsersResponse(response ListAdminUsersRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListAdminUsersOKApplicationJSON:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4271,7 +4376,7 @@ func encodeListAdminUsersResponse(response ListAdminUsersRes, w http.ResponseWri
 	}
 }
 
-func encodeListApiKeysResponse(response ListApiKeysRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListApiKeysResponse(response ListApiKeysRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListApiKeysOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4302,7 +4407,7 @@ func encodeListApiKeysResponse(response ListApiKeysRes, w http.ResponseWriter, s
 	}
 }
 
-func encodeListBotsResponse(response ListBotsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListBotsResponse(response ListBotsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListBotsOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4333,7 +4438,7 @@ func encodeListBotsResponse(response ListBotsRes, w http.ResponseWriter, span tr
 	}
 }
 
-func encodeListChannelsResponse(response ListChannelsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListChannelsResponse(response ListChannelsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListChannelsOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4364,7 +4469,7 @@ func encodeListChannelsResponse(response ListChannelsRes, w http.ResponseWriter,
 	}
 }
 
-func encodeListFileAccessGrantsResponse(response ListFileAccessGrantsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListFileAccessGrantsResponse(response ListFileAccessGrantsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListFileAccessGrantsOKApplicationJSON:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4407,7 +4512,7 @@ func encodeListFileAccessGrantsResponse(response ListFileAccessGrantsRes, w http
 	}
 }
 
-func encodeListFileSharesResponse(response ListFileSharesRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListFileSharesResponse(response ListFileSharesRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListFileSharesOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4450,7 +4555,7 @@ func encodeListFileSharesResponse(response ListFileSharesRes, w http.ResponseWri
 	}
 }
 
-func encodeListFilesResponse(response ListFilesRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListFilesResponse(response ListFilesRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListFilesOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4505,7 +4610,7 @@ func encodeListFilesResponse(response ListFilesRes, w http.ResponseWriter, span 
 	}
 }
 
-func encodeListJobQueuesResponse(response ListJobQueuesRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListJobQueuesResponse(response ListJobQueuesRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *JobQueueList:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4536,7 +4641,7 @@ func encodeListJobQueuesResponse(response ListJobQueuesRes, w http.ResponseWrite
 	}
 }
 
-func encodeListJobsResponse(response ListJobsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListJobsResponse(response ListJobsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *JobPage:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4579,7 +4684,7 @@ func encodeListJobsResponse(response ListJobsRes, w http.ResponseWriter, span tr
 	}
 }
 
-func encodeListPeriodicJobsResponse(response ListPeriodicJobsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListPeriodicJobsResponse(response ListPeriodicJobsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *PeriodicJobList:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4610,7 +4715,7 @@ func encodeListPeriodicJobsResponse(response ListPeriodicJobsRes, w http.Respons
 	}
 }
 
-func encodeListPublicShareFilesResponse(response ListPublicShareFilesRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListPublicShareFilesResponse(response ListPublicShareFilesRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListPublicShareFilesOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4689,7 +4794,7 @@ func encodeListPublicShareFilesResponse(response ListPublicShareFilesRes, w http
 	}
 }
 
-func encodeListSessionsResponse(response ListSessionsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListSessionsResponse(response ListSessionsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListSessionsOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4720,7 +4825,7 @@ func encodeListSessionsResponse(response ListSessionsRes, w http.ResponseWriter,
 	}
 }
 
-func encodeListSharedResponse(response ListSharedRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListSharedResponse(response ListSharedRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListSharedOKApplicationJSON:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4751,7 +4856,7 @@ func encodeListSharedResponse(response ListSharedRes, w http.ResponseWriter, spa
 	}
 }
 
-func encodeListSharedWithMeResponse(response ListSharedWithMeRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListSharedWithMeResponse(response ListSharedWithMeRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListSharedWithMeOKApplicationJSON:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4782,7 +4887,7 @@ func encodeListSharedWithMeResponse(response ListSharedWithMeRes, w http.Respons
 	}
 }
 
-func encodeListUploadPartsResponse(response ListUploadPartsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListUploadPartsResponse(response ListUploadPartsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListUploadPartsOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4837,7 +4942,7 @@ func encodeListUploadPartsResponse(response ListUploadPartsRes, w http.ResponseW
 	}
 }
 
-func encodeListUploadsResponse(response ListUploadsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeListUploadsResponse(response ListUploadsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ListUploadsOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -4880,7 +4985,7 @@ func encodeListUploadsResponse(response ListUploadsRes, w http.ResponseWriter, s
 	}
 }
 
-func encodeLogoutCookieSessionResponse(response LogoutCookieSessionRes, w http.ResponseWriter, span trace.Span) error {
+func encodeLogoutCookieSessionResponse(response LogoutCookieSessionRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *LogoutCookieSessionNoContent:
 		w.Header().Set("Access-Control-Expose-Headers", "Set-Cookie")
@@ -4930,7 +5035,7 @@ func encodeLogoutCookieSessionResponse(response LogoutCookieSessionRes, w http.R
 	}
 }
 
-func encodeLogoutSessionResponse(response LogoutSessionRes, w http.ResponseWriter, span trace.Span) error {
+func encodeLogoutSessionResponse(response LogoutSessionRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *LogoutSessionNoContent:
 		w.WriteHeader(204)
@@ -4954,7 +5059,7 @@ func encodeLogoutSessionResponse(response LogoutSessionRes, w http.ResponseWrite
 	}
 }
 
-func encodeMoveFileResponse(response MoveFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodeMoveFileResponse(response MoveFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *FileEntryHeaders:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5053,7 +5158,7 @@ func encodeMoveFileResponse(response MoveFileRes, w http.ResponseWriter, span tr
 	}
 }
 
-func encodePauseJobQueueResponse(response PauseJobQueueRes, w http.ResponseWriter, span trace.Span) error {
+func encodePauseJobQueueResponse(response PauseJobQueueRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *PauseJobQueueNoContent:
 		w.WriteHeader(204)
@@ -5089,7 +5194,7 @@ func encodePauseJobQueueResponse(response PauseJobQueueRes, w http.ResponseWrite
 	}
 }
 
-func encodePausePeriodicJobResponse(response PausePeriodicJobRes, w http.ResponseWriter, span trace.Span) error {
+func encodePausePeriodicJobResponse(response PausePeriodicJobRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *PeriodicJob:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5132,7 +5237,7 @@ func encodePausePeriodicJobResponse(response PausePeriodicJobRes, w http.Respons
 	}
 }
 
-func encodeProvisionBotResponse(response ProvisionBotRes, w http.ResponseWriter, span trace.Span) error {
+func encodeProvisionBotResponse(response ProvisionBotRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *BotProvisionResponse:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5199,7 +5304,7 @@ func encodeProvisionBotResponse(response ProvisionBotRes, w http.ResponseWriter,
 	}
 }
 
-func encodeProvisionBotsResponse(response ProvisionBotsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeProvisionBotsResponse(response ProvisionBotsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *BotBulkProvisionResponse:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5254,7 +5359,7 @@ func encodeProvisionBotsResponse(response ProvisionBotsRes, w http.ResponseWrite
 	}
 }
 
-func encodePurgeFileResponse(response PurgeFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodePurgeFileResponse(response PurgeFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *PurgeFileNoContent:
 		w.WriteHeader(204)
@@ -5302,7 +5407,7 @@ func encodePurgeFileResponse(response PurgeFileRes, w http.ResponseWriter, span 
 	}
 }
 
-func encodePurgeJobsResponse(response PurgeJobsRes, w http.ResponseWriter, span trace.Span) error {
+func encodePurgeJobsResponse(response PurgeJobsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *JobPurgeResult:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5345,7 +5450,7 @@ func encodePurgeJobsResponse(response PurgeJobsRes, w http.ResponseWriter, span 
 	}
 }
 
-func encodePutFileViewStateResponse(response PutFileViewStateRes, w http.ResponseWriter, span trace.Span) error {
+func encodePutFileViewStateResponse(response PutFileViewStateRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *FileViewState:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5400,7 +5505,7 @@ func encodePutFileViewStateResponse(response PutFileViewStateRes, w http.Respons
 	}
 }
 
-func encodePutPublicShareUploadPartResponse(response PutPublicShareUploadPartRes, w http.ResponseWriter, span trace.Span) error {
+func encodePutPublicShareUploadPartResponse(response PutPublicShareUploadPartRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *PutPublicShareUploadPartOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5513,7 +5618,6 @@ func encodePutPublicShareUploadPartResponse(response PutPublicShareUploadPartRes
 	case *PutPublicShareUploadPartServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -5528,7 +5632,7 @@ func encodePutPublicShareUploadPartResponse(response PutPublicShareUploadPartRes
 	}
 }
 
-func encodePutUploadPartResponse(response PutUploadPartRes, w http.ResponseWriter, span trace.Span) error {
+func encodePutUploadPartResponse(response PutUploadPartRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *PutUploadPartOK:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5653,7 +5757,6 @@ func encodePutUploadPartResponse(response PutUploadPartRes, w http.ResponseWrite
 	case *PutUploadPartServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -5668,7 +5771,7 @@ func encodePutUploadPartResponse(response PutUploadPartRes, w http.ResponseWrite
 	}
 }
 
-func encodeRefreshCookieSessionResponse(response RefreshCookieSessionRes, w http.ResponseWriter, span trace.Span) error {
+func encodeRefreshCookieSessionResponse(response RefreshCookieSessionRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *CookieSessionHeaders:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5737,7 +5840,7 @@ func encodeRefreshCookieSessionResponse(response RefreshCookieSessionRes, w http
 	}
 }
 
-func encodeRefreshSessionResponse(response RefreshSessionRes, w http.ResponseWriter, span trace.Span) error {
+func encodeRefreshSessionResponse(response RefreshSessionRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *TokenPair:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5780,7 +5883,7 @@ func encodeRefreshSessionResponse(response RefreshSessionRes, w http.ResponseWri
 	}
 }
 
-func encodeRemoveFileBookmarksResponse(response RemoveFileBookmarksRes, w http.ResponseWriter, span trace.Span) error {
+func encodeRemoveFileBookmarksResponse(response RemoveFileBookmarksRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *RemoveFileBookmarksNoContent:
 		w.WriteHeader(204)
@@ -5804,7 +5907,7 @@ func encodeRemoveFileBookmarksResponse(response RemoveFileBookmarksRes, w http.R
 	}
 }
 
-func encodeResetPeriodicJobsResponse(response ResetPeriodicJobsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeResetPeriodicJobsResponse(response ResetPeriodicJobsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *PeriodicJobList:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5835,7 +5938,7 @@ func encodeResetPeriodicJobsResponse(response ResetPeriodicJobsRes, w http.Respo
 	}
 }
 
-func encodeRestoreFileResponse(response RestoreFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodeRestoreFileResponse(response RestoreFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *FileEntryHeaders:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5910,7 +6013,7 @@ func encodeRestoreFileResponse(response RestoreFileRes, w http.ResponseWriter, s
 	}
 }
 
-func encodeResumeJobQueueResponse(response ResumeJobQueueRes, w http.ResponseWriter, span trace.Span) error {
+func encodeResumeJobQueueResponse(response ResumeJobQueueRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ResumeJobQueueNoContent:
 		w.WriteHeader(204)
@@ -5946,7 +6049,7 @@ func encodeResumeJobQueueResponse(response ResumeJobQueueRes, w http.ResponseWri
 	}
 }
 
-func encodeResumePeriodicJobResponse(response ResumePeriodicJobRes, w http.ResponseWriter, span trace.Span) error {
+func encodeResumePeriodicJobResponse(response ResumePeriodicJobRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *PeriodicJob:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -5989,7 +6092,7 @@ func encodeResumePeriodicJobResponse(response ResumePeriodicJobRes, w http.Respo
 	}
 }
 
-func encodeRetryJobResponse(response RetryJobRes, w http.ResponseWriter, span trace.Span) error {
+func encodeRetryJobResponse(response RetryJobRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *Job:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -6044,7 +6147,7 @@ func encodeRetryJobResponse(response RetryJobRes, w http.ResponseWriter, span tr
 	}
 }
 
-func encodeRevokeAdminUserAccessResponse(response RevokeAdminUserAccessRes, w http.ResponseWriter, span trace.Span) error {
+func encodeRevokeAdminUserAccessResponse(response RevokeAdminUserAccessRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *RevokeAdminUserAccessNoContent:
 		w.WriteHeader(204)
@@ -6092,7 +6195,7 @@ func encodeRevokeAdminUserAccessResponse(response RevokeAdminUserAccessRes, w ht
 	}
 }
 
-func encodeRevokeApiKeyResponse(response RevokeApiKeyRes, w http.ResponseWriter, span trace.Span) error {
+func encodeRevokeApiKeyResponse(response RevokeApiKeyRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *RevokeApiKeyNoContent:
 		w.WriteHeader(204)
@@ -6128,7 +6231,7 @@ func encodeRevokeApiKeyResponse(response RevokeApiKeyRes, w http.ResponseWriter,
 	}
 }
 
-func encodeRevokeFileAccessGrantResponse(response RevokeFileAccessGrantRes, w http.ResponseWriter, span trace.Span) error {
+func encodeRevokeFileAccessGrantResponse(response RevokeFileAccessGrantRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *RevokeFileAccessGrantNoContent:
 		w.WriteHeader(204)
@@ -6164,7 +6267,7 @@ func encodeRevokeFileAccessGrantResponse(response RevokeFileAccessGrantRes, w ht
 	}
 }
 
-func encodeRevokeSessionResponse(response RevokeSessionRes, w http.ResponseWriter, span trace.Span) error {
+func encodeRevokeSessionResponse(response RevokeSessionRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *RevokeSessionNoContent:
 		w.WriteHeader(204)
@@ -6200,7 +6303,7 @@ func encodeRevokeSessionResponse(response RevokeSessionRes, w http.ResponseWrite
 	}
 }
 
-func encodeRevokeShareResponse(response RevokeShareRes, w http.ResponseWriter, span trace.Span) error {
+func encodeRevokeShareResponse(response RevokeShareRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *RevokeShareNoContent:
 		w.WriteHeader(204)
@@ -6236,7 +6339,7 @@ func encodeRevokeShareResponse(response RevokeShareRes, w http.ResponseWriter, s
 	}
 }
 
-func encodeSearchUsersResponse(response SearchUsersRes, w http.ResponseWriter, span trace.Span) error {
+func encodeSearchUsersResponse(response SearchUsersRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *SearchUsersOKApplicationJSON:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -6279,7 +6382,7 @@ func encodeSearchUsersResponse(response SearchUsersRes, w http.ResponseWriter, s
 	}
 }
 
-func encodeSelectChannelResponse(response SelectChannelRes, w http.ResponseWriter, span trace.Span) error {
+func encodeSelectChannelResponse(response SelectChannelRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ChannelSummary:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -6334,7 +6437,7 @@ func encodeSelectChannelResponse(response SelectChannelRes, w http.ResponseWrite
 	}
 }
 
-func encodeStreamEventsResponse(response StreamEventsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeStreamEventsResponse(response StreamEventsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *StreamEventsUnauthorized:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -6375,7 +6478,6 @@ func encodeStreamEventsResponse(response StreamEventsRes, w http.ResponseWriter,
 	case *StreamEventsServiceUnavailable:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(503)
-		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -6390,7 +6492,7 @@ func encodeStreamEventsResponse(response StreamEventsRes, w http.ResponseWriter,
 	}
 }
 
-func encodeSyncChannelsResponse(response SyncChannelsRes, w http.ResponseWriter, span trace.Span) error {
+func encodeSyncChannelsResponse(response SyncChannelsRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *SyncChannelsOKApplicationJSON:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -6457,7 +6559,7 @@ func encodeSyncChannelsResponse(response SyncChannelsRes, w http.ResponseWriter,
 	}
 }
 
-func encodeTelegramLoginStartResponse(response TelegramLoginStartRes, w http.ResponseWriter, span trace.Span) error {
+func encodeTelegramLoginStartResponse(response TelegramLoginStartRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *TelegramLoginStartResponse:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -6524,7 +6626,7 @@ func encodeTelegramLoginStartResponse(response TelegramLoginStartRes, w http.Res
 	}
 }
 
-func encodeTelegramLoginVerifyCodeResponse(response TelegramLoginVerifyCodeRes, w http.ResponseWriter, span trace.Span) error {
+func encodeTelegramLoginVerifyCodeResponse(response TelegramLoginVerifyCodeRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *TokenPair:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -6615,7 +6717,7 @@ func encodeTelegramLoginVerifyCodeResponse(response TelegramLoginVerifyCodeRes, 
 	}
 }
 
-func encodeTelegramLoginVerifyPasswordResponse(response TelegramLoginVerifyPasswordRes, w http.ResponseWriter, span trace.Span) error {
+func encodeTelegramLoginVerifyPasswordResponse(response TelegramLoginVerifyPasswordRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *TokenPair:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -6694,7 +6796,7 @@ func encodeTelegramLoginVerifyPasswordResponse(response TelegramLoginVerifyPassw
 	}
 }
 
-func encodeTelegramQRLoginPollResponse(response TelegramQRLoginPollRes, w http.ResponseWriter, span trace.Span) error {
+func encodeTelegramQRLoginPollResponse(response TelegramQRLoginPollRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *TokenPair:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -6785,7 +6887,7 @@ func encodeTelegramQRLoginPollResponse(response TelegramQRLoginPollRes, w http.R
 	}
 }
 
-func encodeTelegramQRLoginStartResponse(response TelegramQRLoginStartRes, w http.ResponseWriter, span trace.Span) error {
+func encodeTelegramQRLoginStartResponse(response TelegramQRLoginStartRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *TelegramQRLoginResponse:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -6852,7 +6954,7 @@ func encodeTelegramQRLoginStartResponse(response TelegramQRLoginStartRes, w http
 	}
 }
 
-func encodeTrashFileResponse(response TrashFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodeTrashFileResponse(response TrashFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *TrashFileNoContent:
 		w.WriteHeader(204)
@@ -6900,7 +7002,7 @@ func encodeTrashFileResponse(response TrashFileRes, w http.ResponseWriter, span 
 	}
 }
 
-func encodeTrashPublicShareFileResponse(response TrashPublicShareFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodeTrashPublicShareFileResponse(response TrashPublicShareFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *TrashPublicShareFileNoContent:
 		w.WriteHeader(204)
@@ -6960,7 +7062,7 @@ func encodeTrashPublicShareFileResponse(response TrashPublicShareFileRes, w http
 	}
 }
 
-func encodeUpdateAdminUserResponse(response UpdateAdminUserRes, w http.ResponseWriter, span trace.Span) error {
+func encodeUpdateAdminUserResponse(response UpdateAdminUserRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *AdminUserSummary:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -7027,7 +7129,7 @@ func encodeUpdateAdminUserResponse(response UpdateAdminUserRes, w http.ResponseW
 	}
 }
 
-func encodeUpdateFileResponse(response UpdateFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodeUpdateFileResponse(response UpdateFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *FileEntryHeaders:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -7126,7 +7228,7 @@ func encodeUpdateFileResponse(response UpdateFileRes, w http.ResponseWriter, spa
 	}
 }
 
-func encodeUpdateFileAccessGrantResponse(response UpdateFileAccessGrantRes, w http.ResponseWriter, span trace.Span) error {
+func encodeUpdateFileAccessGrantResponse(response UpdateFileAccessGrantRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *FileAccessGrantSummary:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -7181,7 +7283,7 @@ func encodeUpdateFileAccessGrantResponse(response UpdateFileAccessGrantRes, w ht
 	}
 }
 
-func encodeUpdatePeriodicJobResponse(response UpdatePeriodicJobRes, w http.ResponseWriter, span trace.Span) error {
+func encodeUpdatePeriodicJobResponse(response UpdatePeriodicJobRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *PeriodicJob:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -7236,7 +7338,7 @@ func encodeUpdatePeriodicJobResponse(response UpdatePeriodicJobRes, w http.Respo
 	}
 }
 
-func encodeUpdatePublicShareFileResponse(response UpdatePublicShareFileRes, w http.ResponseWriter, span trace.Span) error {
+func encodeUpdatePublicShareFileResponse(response UpdatePublicShareFileRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *FileEntry:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -7327,7 +7429,7 @@ func encodeUpdatePublicShareFileResponse(response UpdatePublicShareFileRes, w ht
 	}
 }
 
-func encodeUpdateShareResponse(response UpdateShareRes, w http.ResponseWriter, span trace.Span) error {
+func encodeUpdateShareResponse(response UpdateShareRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *ShareSummary:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -7366,6 +7468,49 @@ func encodeUpdateShareResponse(response UpdateShareRes, w http.ResponseWriter, s
 		return nil
 
 	case *UpdateShareUnprocessableEntity:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
+func encodeUpdateUserPreferencesResponse(response UpdateUserPreferencesRes, w http.ResponseWriter) error {
+	switch response := response.(type) {
+	case *UserPreferences:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *UpdateUserPreferencesUnauthorized:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *UpdateUserPreferencesUnprocessableEntity:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(422)
 

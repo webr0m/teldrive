@@ -1,3 +1,4 @@
+import { installPreferencesApi } from "./fixtures/preferences";
 import { expect, type Page, test } from "@playwright/test";
 
 const resultFile = {
@@ -41,8 +42,95 @@ async function installResults(page: Page) {
       return route.fulfill({ contentType: "text/plain", body: "Preview from search" });
     return route.fulfill({ status: 404, json: {} });
   });
+  await installPreferencesApi(page);
   return state;
 }
+
+test("search controls stay in the header while selection actions float without shrinking", async ({
+  page,
+}) => {
+  await installResults(page);
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto("/search?q=alpha");
+  const toolbar = page.getByTestId("file-browser-toolbar");
+  await expect(toolbar.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
+  await expect(toolbar.getByRole("button", { name: "Sort files" })).toBeVisible();
+  await expect(toolbar.getByRole("button", { name: /Toggle sort order/ })).toHaveText("");
+  await toolbar.getByRole("button", { name: "Sort files" }).click();
+  await page.getByRole("menuitemradio", { name: "Size", exact: true }).click();
+  await expect(page).toHaveURL(/sort=size/);
+  await toolbar.getByRole("button", { name: /Toggle sort order/ }).click();
+  await expect(page).toHaveURL(/order=desc/);
+  await expect(toolbar.getByRole("region", { name: "Active filters" })).toBeVisible();
+  await expect(toolbar.getByRole("button", { name: /Remove .* filter/ })).toBeVisible();
+  await page
+    .getByRole("row", { name: /alpha\.txt/ })
+    .locator('[data-slot="checkbox-control"]')
+    .click();
+  const actions = page.getByRole("group", { name: "Selected file actions" });
+  await expect(actions).toBeVisible();
+  await expect(toolbar.getByRole("group", { name: "Selected file actions" })).toHaveCount(0);
+  await expect(toolbar.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
+  for (const width of [320, 390, 1280]) {
+    await page.setViewportSize({ width, height: 740 });
+    await expect
+      .poll(() =>
+        toolbar.evaluate((element) => {
+          const header = element.getBoundingClientRect();
+          return [...element.querySelectorAll("button")].every((button) => {
+            const bounds = button.getBoundingClientRect();
+            return bounds.left >= header.left && bounds.right <= header.right;
+          });
+        }),
+      )
+      .toBe(true);
+    for (const button of await actions.getByRole("button").all()) {
+      await expect(button).toHaveCSS("flex-shrink", "0");
+      expect((await button.boundingBox())!.width).toBeGreaterThanOrEqual(28);
+    }
+    await expect
+      .poll(() =>
+        actions.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          return [...element.querySelectorAll("button")].every((button) => {
+            const rect = button.getBoundingClientRect();
+            return (
+              rect.left >= bounds.left &&
+              rect.right <= bounds.right &&
+              rect.top >= bounds.top &&
+              rect.bottom <= bounds.bottom
+            );
+          });
+        }),
+      )
+      .toBe(true);
+  }
+  await actions.getByRole("button", { name: "Clear selection" }).click();
+  await expect(toolbar.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
+    .toBeLessThanOrEqual(1);
+});
+
+test("integrated search filters remain available in empty and invalid search states", async ({
+  page,
+}) => {
+  await installResults(page);
+  for (const url of [
+    "/search",
+    "/search?q=alpha&scope=recursive",
+    "/search?updatedAfter=2026-06-01&updatedBefore=2026-05-01",
+  ]) {
+    await page.goto(url);
+    const filters = page.getByTestId("file-browser-toolbar").getByRole("button", {
+      name: "Filters",
+      exact: true,
+    });
+    await filters.click();
+    await expect(page.getByRole("heading", { name: "Refine your search" })).toBeVisible();
+    await expect(page.getByRole("progressbar")).toHaveCount(0);
+  }
+});
 
 test("header search submits and the routed query fetches drive results", async ({ page }) => {
   const requests: URL[] = [];
@@ -86,6 +174,7 @@ test("header search submits and the routed query fetches drive results", async (
     return route.fulfill({ status: 404, json: {} });
   });
 
+  await installPreferencesApi(page);
   await page.goto("/files");
   const search = page.getByRole("textbox", { name: "Search files" });
   await search.fill("alpha");
@@ -123,6 +212,7 @@ test("header submission carries the active folder context without sending a path
     }
     return route.fulfill({ status: 404, json: {} });
   });
+  await installPreferencesApi(page);
   await page.goto(`/files?path=%2FProjects%2FDesign&parentId=${folderId}`);
   await page.getByRole("textbox", { name: "Search files" }).fill("brief");
   await page.getByRole("textbox", { name: "Search files" }).press("Enter");
@@ -154,6 +244,7 @@ test("search filters-only navigation serializes scope without leaking path", asy
     }
     return route.fulfill({ status: 404, json: {} });
   });
+  await installPreferencesApi(page);
   await page.goto(
     "/search?scope=recursive&parentId=11111111-1111-4111-8111-111111111111&kind=file",
   );
@@ -186,6 +277,7 @@ test("search filters apply as a real form and keep canonical dates in URL and AP
     }
     return route.fulfill({ status: 404, json: {} });
   });
+  await installPreferencesApi(page);
   await page.goto("/search?q=report");
   await page.getByRole("button", { name: "Filters" }).click();
   await page.getByRole("button", { name: /Type/ }).click();
@@ -228,6 +320,7 @@ test("recursive filter can choose a folder and sends only its id", async ({ page
     }
     return route.fulfill({ status: 404, json: {} });
   });
+  await installPreferencesApi(page);
   await page.goto("/search?q=notes");
   await page.getByRole("button", { name: "Filters" }).click();
   await page.getByRole("button", { name: /Search in/ }).click();
@@ -264,6 +357,7 @@ test("a recursive URL without its folder is recoverable and never requests or sp
     }
     return route.fulfill({ status: 404, json: {} });
   });
+  await installPreferencesApi(page);
   await page.goto("/search?q=report&scope=recursive");
   await expect(page.getByText("Choose a folder to search recursively")).toBeVisible();
   await expect(page.getByRole("button", { name: "Choose folder" })).toBeVisible();
@@ -292,6 +386,7 @@ test("live search debounces requests and browser history restores the input", as
     }
     return route.fulfill({ status: 404, json: {} });
   });
+  await installPreferencesApi(page);
   await page.goto("/files");
   await page.clock.install();
   await page.clock.pauseAt(new Date(Date.now() + 1_000));
@@ -356,6 +451,7 @@ test("mobile search results expose a working root location button", async ({ pag
       });
     return route.fulfill({ status: 404, json: {} });
   });
+  await installPreferencesApi(page);
   await page.goto("/search?q=root");
   const location = page.getByRole("button", { name: "Open containing folder /" });
   await expect(location).toBeVisible();
@@ -408,6 +504,7 @@ test("search selection exposes bounded actions and renames the selected result",
     }
     return route.fulfill({ status: 404, json: {} });
   });
+  await installPreferencesApi(page);
   await page.goto("/search?q=alpha");
   const row = page.getByRole("row", { name: /alpha\.txt/ });
   await row.click();

@@ -19,6 +19,12 @@ type Handler interface {
 	//
 	// DELETE /v1/uploads/{uploadId}
 	AbortUpload(ctx context.Context, params AbortUploadParams) (AbortUploadRes, error)
+	// AuthorizePublicShareDownload implements authorizePublicShareDownload operation.
+	//
+	// Exchange the share password for a 15-minute, share-scoped download cookie.
+	//
+	// POST /v1/public/shares/{token}/download-session
+	AuthorizePublicShareDownload(ctx context.Context, params AuthorizePublicShareDownloadParams) (AuthorizePublicShareDownloadRes, error)
 	// BookmarkFiles implements bookmarkFiles operation.
 	//
 	// Bookmark selected active files and folders.
@@ -238,6 +244,12 @@ type Handler interface {
 	//
 	// GET /v1/uploads/statistics
 	GetUploadStatistics(ctx context.Context, params GetUploadStatisticsParams) (GetUploadStatisticsRes, error)
+	// GetUserPreferences implements getUserPreferences operation.
+	//
+	// Return the authenticated user's web UI preferences, with server defaults for unset values.
+	//
+	// GET /v1/me/preferences
+	GetUserPreferences(ctx context.Context) (GetUserPreferencesRes, error)
 	// HeadFile implements headFile operation.
 	//
 	// Return content metadata without streaming the file.
@@ -559,6 +571,12 @@ type Handler interface {
 	//
 	// PATCH /v1/shares/{shareId}
 	UpdateShare(ctx context.Context, req *ShareUpdateRequest, params UpdateShareParams) (UpdateShareRes, error)
+	// UpdateUserPreferences implements updateUserPreferences operation.
+	//
+	// Update a subset of the authenticated user's web UI preferences.
+	//
+	// PATCH /v1/me/preferences
+	UpdateUserPreferences(ctx context.Context, req *UserPreferencesUpdate) (UpdateUserPreferencesRes, error)
 }
 
 // RawHandler handles raw response operations described by OpenAPI v3 specification.

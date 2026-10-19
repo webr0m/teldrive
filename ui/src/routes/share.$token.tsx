@@ -3,6 +3,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { FileTrigger, type Selection } from "react-aria-components";
 import { toast } from "sonner";
+import { apiFetch } from "@/api/client";
+import { ApiError, userMessage } from "@/api/errors";
+import type { FileEntry, PublicShare } from "@/api/types";
+import { AppDialog } from "@/components/dialogs/app-dialog";
+import { Page, PageContent } from "@/components/page";
+import { copyText } from "@/features/files/download";
+import { FileBrowser, type FileBrowserView } from "@/features/files/file-browser";
+import { newIdempotencyKey } from "@/features/shared/idempotency";
+import { useFormatBytes } from "@/lib/format";
+import { useAppLocale } from "@/lib/locale";
 import DownloadIcon from "~icons/gravity-ui/arrow-down-to-line";
 import UploadIcon from "~icons/gravity-ui/arrow-up-from-line";
 import LogoIcon from "~icons/gravity-ui/layers";
@@ -11,16 +21,6 @@ import PencilIcon from "~icons/gravity-ui/pencil";
 import PlusIcon from "~icons/gravity-ui/plus";
 import TrashIcon from "~icons/gravity-ui/trash-bin";
 import CloseIcon from "~icons/gravity-ui/xmark";
-import { apiFetch } from "@/api/client";
-import { ApiError, userMessage } from "@/api/errors";
-import type { FileEntry, PublicShare } from "@/api/types";
-import { AppDialog } from "@/components/dialogs/app-dialog";
-import { Page, PageContent } from "@/components/page";
-import { FileBrowser, type FileBrowserView } from "@/features/files/file-browser";
-import { copyText } from "@/features/files/download";
-import { newIdempotencyKey } from "@/features/shared/idempotency";
-import { useAppLocale } from "@/lib/locale";
-import { useFormatBytes } from "@/lib/format";
 
 export const Route = createFileRoute("/share/$token")({
   component: PublicSharePage,
@@ -124,37 +124,33 @@ function PublicSharePage() {
 
   useEffect(() => setSelectedKeys(new Set()), [path]);
 
-  const publicContentUrl = (file: FileEntry) => {
+  // API path relative to the API base, i.e. without the "/api" prefix that apiFetch adds.
+  const publicContentPath = (file: FileEntry) => {
     const isRootFile = share?.file.kind === "file" && file.id === share.file.id;
     const fileName = encodeURIComponent(file.name);
-    const endpoint = isRootFile
+    return isRootFile
       ? `/v1/public/shares/${encodeURIComponent(token)}/content/${fileName}`
       : `/v1/public/shares/${encodeURIComponent(token)}/files/${encodeURIComponent(file.id)}/content/${fileName}`;
-    return new URL(`/api${endpoint}`, window.location.origin).toString();
   };
 
-  const publicDownloadUrl = (file: FileEntry) => {
-    const url = new URL(publicContentUrl(file));
-    url.searchParams.set("download", "1");
-    return url.toString();
-  };
+  // Absolute, shareable URL (includes the "/api" prefix). Only for copying/linking, never pass it
+  // through apiFetch, which would prepend "/api" a second time.
+  const publicContentUrl = (file: FileEntry) =>
+    new URL(`/api${publicContentPath(file)}`, window.location.origin).toString();
 
   const download = async (file: FileEntry) => {
     setError(undefined);
     try {
-      const response = await apiFetch(
-        new URL(publicDownloadUrl(file)).pathname + new URL(publicDownloadUrl(file)).search,
-        {
+      if (share?.passwordProtected) {
+        await apiFetch(`/v1/public/shares/${encodeURIComponent(token)}/download-session`, {
+          method: "POST",
           headers: shareHeaders(activePassword),
-        },
-      );
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+        });
+      }
       const anchor = document.createElement("a");
-      anchor.href = url;
+      anchor.href = `${publicContentUrl(file)}?download=1`;
       anchor.download = file.name;
       anchor.click();
-      URL.revokeObjectURL(url);
     } catch (cause) {
       setError(userMessage(cause));
     }
@@ -438,7 +434,7 @@ function PublicSharePage() {
                   selectionOverlay={
                     selectedFiles.length ? (
                       <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
-                        <div className="pointer-events-auto flex max-w-full items-center gap-1.5 overflow-x-auto rounded-full border border-border bg-surface/95 p-1.5 shadow-xl backdrop-blur">
+                        <div className="pointer-events-auto flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface/95 p-1.5 shadow-xl backdrop-blur @2xl/file-browser:rounded-full [&>button]:shrink-0">
                           <span className="shrink-0 rounded-full bg-accent/10 px-3 py-2 text-sm font-medium text-accent">
                             {t("selection.count", { count: selectedFiles.length })}
                           </span>

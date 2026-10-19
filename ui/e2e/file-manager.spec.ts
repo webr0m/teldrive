@@ -1,4 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
+import { startDownloadServer } from "./fixtures/download-server";
+import {
+  installPreferencesApi,
+  type PreferencesApi,
+  type PreferencesSeed,
+} from "./fixtures/preferences";
 
 const now = "2026-07-22T12:00:00Z";
 const rootId = "11111111-1111-4111-8111-111111111111";
@@ -8,10 +14,7 @@ const betaId = "33333333-3333-4333-8333-333333333333";
 test("sorting hydrates before the first request and URL overrides saved preferences", async ({
   page,
 }) => {
-  await page.addInitScript(() =>
-    localStorage.setItem("file-sort", JSON.stringify({ sort: "size", order: "desc" })),
-  );
-  await installFileApi(page);
+  const preferences = await installFileApi(page, { files: { sort: "size", order: "desc" } });
   const requests: URL[] = [];
   page.on("request", (request) => {
     const url = new URL(request.url());
@@ -36,9 +39,7 @@ test("sorting hydrates before the first request and URL overrides saved preferen
   );
   expect(await sortOrder.locator("svg").innerHTML()).not.toBe(descendingIcon);
   await expect.poll(() => requests.at(-1)?.searchParams.get("order")).toBe("asc");
-  await expect
-    .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("file-sort")!).order))
-    .toBe("asc");
+  await expect.poll(() => preferences.current().files.order).toBe("asc");
   requests.length = 0;
   await page.goto("/files?sort=updatedAt&order=asc");
   await expect.poll(() => requests.length).toBeGreaterThan(0);
@@ -75,7 +76,7 @@ function file(
   };
 }
 
-async function installFileApi(page: Page) {
+async function installFileApi(page: Page, seed: PreferencesSeed = {}): Promise<PreferencesApi> {
   let uploadSequence = 0;
   const uploadFiles = new Map<string, ReturnType<typeof file>>();
   const files = new Map<string, FixtureFile>([
@@ -398,9 +399,81 @@ async function installFileApi(page: Page) {
       json: { error: { code: "not_found", message: `${method} ${path}` } },
     });
   });
+  return installPreferencesApi(page, seed);
 }
 
 test.beforeEach(async ({ page }) => installFileApi(page));
+
+test("sidebar shows the build-time version without a health request", async ({
+  page,
+  isMobile,
+}) => {
+  let requests = 0;
+  await page.route("**/api/health/live", async (route) => {
+    requests += 1;
+    return route.fulfill({ status: 503, json: {} });
+  });
+  await page.goto("/files");
+  if (isMobile) await page.getByRole("button", { name: "Open navigation" }).click();
+  const sidebar = page.locator("aside");
+  const versionLabel = process.env.VERSION?.trim() || "dev";
+  await expect(sidebar.getByText(versionLabel, { exact: true })).toBeVisible();
+  await expect(sidebar.getByRole("button", { name: "Account menu" })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("sidebar-version.png"), scale: "css" });
+  if (isMobile) {
+    await page
+      .getByRole("dialog", { name: "Navigation", exact: true })
+      .getByRole("button", { name: "Close navigation" })
+      .last()
+      .click();
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    await expect(sidebar.getByText(versionLabel, { exact: true })).toBeVisible();
+  }
+  expect(requests).toBe(0);
+});
+
+for (const theme of ["light", "dark"] as const) {
+  test(`mobile navigation has an opaque full-height background in ${theme} mode`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installPreferencesApi(page, { appearance: { theme }, updatedAt: now });
+    await page.goto("/files");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    const navigation = page.getByRole("dialog", { name: "Navigation", exact: true });
+    const sidebar = navigation.locator("aside");
+    await expect(sidebar).toBeVisible();
+    await expect
+      .poll(() =>
+        sidebar.evaluate((element) => {
+          const reference = document.createElement("div");
+          reference.style.backgroundColor = "var(--sidebar)";
+          element.append(reference);
+          const expected = getComputedStyle(reference).backgroundColor;
+          reference.remove();
+          return getComputedStyle(element).backgroundColor === expected;
+        }),
+      )
+      .toBe(true);
+    await expect
+      .poll(() =>
+        sidebar.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          return bounds.top === 0 && bounds.bottom === window.innerHeight;
+        }),
+      )
+      .toBe(true);
+    const screenshot = test.info().outputPath(`mobile-sidebar-${theme}.png`);
+    await page.screenshot({ path: screenshot, scale: "css" });
+    await test.info().attach(`mobile-sidebar-${theme}`, {
+      path: screenshot,
+      contentType: "image/png",
+    });
+    await navigation.getByRole("button", { name: "Close navigation" }).last().click();
+    await expect(navigation).toBeHidden();
+  });
+}
 
 test("sidebar active state follows route path and bookmark search state", async ({
   page,
@@ -578,11 +651,13 @@ test("plain multi-file uploads render as flat rows without a batch hierarchy", a
 });
 
 test("upload settings use an encryption switch and normalize chunk size", async ({ page }) => {
+  const preferences = await installPreferencesApi(page);
   await page.goto("/settings/uploads");
   const encryption = page.getByRole("switch", { name: "Encrypt uploaded files" });
   await expect(encryption).not.toBeChecked();
   await encryption.press("Space");
   await expect(encryption).toBeChecked();
+  await expect.poll(() => preferences.current().uploads.encryption).toBe(true);
 
   const partSize = page.getByRole("textbox", { name: /Preferred part size in MiB/ });
   await expect(partSize).toHaveValue("512");
@@ -590,32 +665,142 @@ test("upload settings use an encryption switch and normalize chunk size", async 
   await partSize.blur();
   await expect(partSize).toHaveValue("528");
   await expect
-    .poll(() =>
-      page.evaluate(() => JSON.parse(localStorage.getItem("teldrive.upload-settings.v2") || "{}")),
-    )
-    .toMatchObject({ encryption: true, preferredPartSize: 528 * 1024 * 1024 });
+    .poll(() => preferences.patches.at(-1))
+    .toEqual({ uploads: { preferredPartSize: 528 * 1024 * 1024 } });
 
   await partSize.fill("3000");
   await partSize.blur();
   await expect(partSize).toHaveValue("2,048");
   await expect
-    .poll(() =>
-      page.evaluate(() => JSON.parse(localStorage.getItem("teldrive.upload-settings.v2") || "{}")),
-    )
-    .toMatchObject({ preferredPartSize: 2048 * 1024 * 1024 });
+    .poll(() => preferences.patches.at(-1))
+    .toEqual({ uploads: { preferredPartSize: 2048 * 1024 * 1024 } });
 });
 
 test("upload settings retain an existing valid chunk choice", async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem(
-      "teldrive.upload-settings.v2",
-      JSON.stringify({ preferredPartSize: 640 * 1024 * 1024 }),
-    );
-  });
+  await installPreferencesApi(page, { uploads: { preferredPartSize: 640 * 1024 * 1024 } });
   await page.goto("/settings/uploads");
   await expect(page.getByRole("textbox", { name: /Preferred part size in MiB/ })).toHaveValue(
     "640",
   );
+});
+
+test("account encryption default applies to settings, uploads, and URL imports", async ({
+  page,
+}) => {
+  await installPreferencesApi(page, { uploads: { encryption: true } });
+  await page.goto("/settings/uploads");
+  await expect(page.getByRole("switch", { name: "Encrypt uploaded files" })).toBeChecked();
+
+  await page.goto("/files");
+  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  const fileChooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("menuitem", { name: "Upload files" }).click();
+  const fileChooser = await fileChooserPromise;
+  const uploadCreated = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" && new URL(request.url()).pathname === "/api/v1/uploads",
+  );
+  await fileChooser.setFiles({
+    name: "secret.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("secret"),
+  });
+  expect((await uploadCreated).postDataJSON()).toMatchObject({ encryption: true });
+
+  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Background upload" }).click();
+  const dialog = page.getByRole("dialog", { name: "Background upload" });
+  await expect(dialog.getByRole("switch", { name: "Encrypt uploaded files" })).toBeChecked();
+});
+
+test("legacy browser upload and sort settings import once into an account without preferences", async ({
+  page,
+}) => {
+  const preferences = await installPreferencesApi(page);
+  await page.goto("/login");
+  await page.evaluate(() => {
+    localStorage.setItem(
+      "teldrive.upload-settings.v2",
+      JSON.stringify({
+        encryption: true,
+        conflictPolicy: "error",
+        concurrency: 5,
+        preferredPartSize: 528 * 1024 * 1024,
+      }),
+    );
+    localStorage.setItem("file-sort", JSON.stringify({ sort: "size", order: "desc" }));
+  });
+
+  await page.goto("/files");
+  await expect
+    .poll(() => preferences.patches)
+    .toEqual([
+      {
+        uploads: {
+          encryption: true,
+          conflictPolicy: "fail",
+          concurrency: 5,
+          preferredPartSize: 528 * 1024 * 1024,
+        },
+        files: { sort: "size", order: "desc" },
+      },
+    ]);
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("teldrive.upload-settings.v2")))
+    .toBeNull();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("file-sort"))).toBeNull();
+  expect(preferences.current()).toMatchObject({
+    uploads: { encryption: true, conflictPolicy: "fail", concurrency: 5 },
+    files: { sort: "size", order: "desc" },
+  });
+
+  await page.reload();
+  await expect(page.getByTestId("file-drop-zone")).toBeVisible();
+  expect(preferences.patches).toHaveLength(1);
+});
+
+test("another account on the same browser does not import the previous account's appearance", async ({
+  page,
+}) => {
+  await installPreferencesApi(page, {
+    appearance: { theme: "light", locale: "es" },
+    updatedAt: "2026-07-22T12:00:00Z",
+  });
+  await page.goto("/files");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("theme"))).toBe("light");
+
+  const fresh = await installPreferencesApi(page);
+  await page.reload();
+  await expect(page.getByTestId("file-drop-zone")).toBeVisible();
+  // The fresh account keeps its "system" default, which the dark test color scheme resolves.
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(fresh.patches).toEqual([]);
+});
+
+test("saved account appearance and file sort override conflicting browser values on load", async ({
+  page,
+}) => {
+  const preferences = await installPreferencesApi(page, {
+    appearance: { theme: "light" },
+    files: { sort: "size", order: "desc" },
+    updatedAt: "2026-07-22T12:00:00Z",
+  });
+  await page.goto("/login");
+  await page.evaluate(() => {
+    localStorage.setItem("theme", "dark");
+    localStorage.setItem("file-sort", JSON.stringify({ sort: "name", order: "asc" }));
+  });
+
+  const listing = page.waitForRequest(
+    (request) => new URL(request.url()).pathname === "/api/v1/files",
+  );
+  await page.goto("/files");
+  const url = new URL((await listing).url());
+  expect(url.searchParams.get("sort")).toBe("size");
+  expect(url.searchParams.get("order")).toBe("desc");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  expect(preferences.patches).toEqual([]);
 });
 
 test("React Aria file selection supports replacement, ranges, select all, and escape", async ({
@@ -706,6 +891,98 @@ test("selected file downloads and copies its attachment URL on an insecure host"
     .poll(() => page.evaluate(() => (window as typeof window & { copiedText?: string }).copiedText))
     .toBe(`${new URL(page.url()).origin}/api/v1/files/${alphaId}/content/alpha.txt?download=1`);
 });
+
+for (const passwordProtected of [false, true]) {
+  for (const folder of [false, true]) {
+    test(`public ${folder ? "folder" : "file"} share downloads through the browser (${passwordProtected ? "password" : "no password"})`, async ({
+      page,
+      baseURL,
+    }) => {
+      const token = "tds_download-fixture";
+      const password = "fixture-password";
+      const base = `/api/v1/public/shares/${token}`;
+      const filename = "large #1 résumé.bin";
+      const entry = file({ id: alphaId, name: filename, kind: "file", size: 6 * 1024 ** 3 });
+      const content = folder
+        ? `${base}/files/${alphaId}/content/${encodeURIComponent(filename)}?download=1`
+        : `${base}/content/${encodeURIComponent(filename)}?download=1`;
+      let exchanges = 0;
+
+      // Make whole-file buffering a hard failure rather than merely asserting
+      // that a small fixture eventually produces a download.
+      await page.addInitScript(() => {
+        const blob = Response.prototype.blob;
+        Response.prototype.blob = function () {
+          if (this.url.includes("/public/shares/")) {
+            throw new Error("Public share downloads must not buffer a Blob");
+          }
+          return blob.call(this);
+        };
+      });
+      await page.route(`**${base}**`, async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        const suppliedPassword = request.headers()["x-share-password"];
+        if (url.pathname === `${base}/download-session`) {
+          exchanges += 1;
+          expect(request.method()).toBe("POST");
+          expect(suppliedPassword).toBe(password);
+          return route.fulfill({
+            status: 204,
+            headers: {
+              "Set-Cookie": `teldrive_share_download=opaque-fixture; Path=${base}/; HttpOnly; SameSite=Strict; Max-Age=900`,
+              "Cache-Control": "no-store",
+            },
+          });
+        }
+        if (passwordProtected && suppliedPassword !== password) {
+          return route.fulfill({
+            status: 401,
+            json: { error: { code: "unauthorized", message: "Password required" } },
+          });
+        }
+        if (url.pathname === `${base}/files`) {
+          return route.fulfill({ json: { items: [entry] } });
+        }
+        return route.fulfill({
+          json: {
+            id: rootId,
+            file: folder ? file({ id: rootId, name: "Shared folder", kind: "folder" }) : entry,
+            passwordProtected,
+            permission: "read",
+          },
+        });
+      });
+      if (!baseURL) throw new Error("Missing Playwright base URL");
+      const server = await startDownloadServer(baseURL, content);
+      try {
+        await page.goto(`${server.origin}/share/${token}`);
+        if (passwordProtected) {
+          await page.locator('input[type="password"]').fill(password);
+          await page.getByRole("button", { name: "Open share", exact: true }).click();
+        }
+        await page.getByRole("row", { name: /large #1/ }).click();
+        const pending = page.waitForEvent("download");
+        await page.getByRole("button", { name: "Download selected file" }).click();
+        const download = await pending;
+        expect(await download.failure()).toBeNull();
+        expect(download.url()).toBe(`${new URL(page.url()).origin}${content}`);
+        expect(download.suggestedFilename()).toBe(filename);
+        expect(exchanges).toBe(passwordProtected ? 1 : 0);
+        expect(server.requests).toHaveLength(1);
+        expect(server.requests[0].headers["x-share-password"]).toBeUndefined();
+        if (passwordProtected) {
+          expect(server.requests[0].headers.cookie).toContain(
+            "teldrive_share_download=opaque-fixture",
+          );
+        }
+        expect(new URL(page.url()).pathname).toBe(`/share/${token}`);
+      } finally {
+        await server.close();
+      }
+    });
+  }
+}
 
 test("React Aria owns directional navigation, range selection, typeahead, and item actions", async ({
   page,
@@ -935,6 +1212,85 @@ test("split view keeps pane navigation independent and uses browser history", as
 
   await page.getByRole("button", { name: "Close split view" }).click();
   await expect(page.getByTestId("file-pane-secondary")).toHaveCount(0);
+});
+
+test("selection toolbar stays within narrow viewports and its actions remain reachable", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto("/files");
+  await page
+    .getByRole("row", { name: /alpha\.txt/ })
+    .locator('[data-slot="checkbox-control"]')
+    .click();
+  const toolbar = page.getByRole("group", { name: "Selected file actions" });
+  await expect(toolbar).toBeVisible();
+  await expect(
+    page.getByTestId("file-browser-toolbar").getByRole("group", {
+      name: "Selected file actions",
+    }),
+  ).toHaveCount(0);
+
+  for (const width of [320, 390, 412, 1280]) {
+    await page.setViewportSize({ width, height: 740 });
+    await expect
+      .poll(() =>
+        toolbar.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          return bounds.left >= 0 && bounds.right <= window.innerWidth;
+        }),
+      )
+      .toBe(true);
+    for (const button of await toolbar.getByRole("button").all()) {
+      await expect(button).toHaveCSS("flex-shrink", "0");
+      expect((await button.boundingBox())!.width).toBeGreaterThanOrEqual(28);
+    }
+    const rows = await toolbar.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      const buttons = [...element.querySelectorAll("button")];
+      if (
+        buttons.some((button) => {
+          const rect = button.getBoundingClientRect();
+          return (
+            rect.left < bounds.left ||
+            rect.right > bounds.right ||
+            rect.top < bounds.top ||
+            rect.bottom > bounds.bottom
+          );
+        })
+      )
+        return 0;
+      return new Set(buttons.map((button) => Math.round(button.getBoundingClientRect().top))).size;
+    });
+    if (width === 1280) expect(rows).toBe(1);
+    else expect(rows).toBeGreaterThan(1);
+    await expect
+      .poll(() =>
+        page.getByTestId("file-browser-toolbar").evaluate((element) => {
+          const header = element.getBoundingClientRect();
+          return [...element.querySelectorAll("button")].every((button) => {
+            const bounds = button.getBoundingClientRect();
+            return (
+              bounds.width === 0 || (bounds.left >= header.left && bounds.right <= header.right)
+            );
+          });
+        }),
+      )
+      .toBe(true);
+  }
+
+  await page.setViewportSize({ width: 320, height: 740 });
+  await expect(toolbar).toHaveCSS("flex-wrap", "wrap");
+  await expect
+    .poll(() => toolbar.evaluate((element) => element.scrollWidth - element.clientWidth))
+    .toBeLessThanOrEqual(1);
+  await toolbar.getByRole("button", { name: "Clear selection" }).click();
+  await expect(toolbar).toBeHidden();
+  await expect(
+    page.getByTestId("file-browser-toolbar").getByRole("button", {
+      name: "Sort files",
+    }),
+  ).toBeVisible();
 });
 
 test("touch opens items and exposes an explicit multi-selection control", async ({
