@@ -60,7 +60,7 @@ func MigrateIfNeeded(ctx context.Context, cfg database.Config, dataKey string, v
 	}()
 
 	var legacy bool
-	if err := conn.QueryRow(ctx, `SELECT to_regclass('public.goose_db_version') IS NOT NULL`).Scan(&legacy); err != nil {
+	if err := conn.QueryRow(ctx, database.LegacySchemaQuery).Scan(&legacy); err != nil {
 		return Report{}, false, fmt.Errorf("inspect legacy migration table: %w", err)
 	}
 	if !legacy {
@@ -299,7 +299,7 @@ func swapSchemas(ctx context.Context, tx pgx.Tx, cfg Config) error {
 
 func verifyLegacy(ctx context.Context, conn *pgx.Conn) error {
 	var legacy bool
-	if err := conn.QueryRow(ctx, `SELECT to_regclass('public.goose_db_version') IS NOT NULL`).Scan(&legacy); err != nil {
+	if err := conn.QueryRow(ctx, database.LegacySchemaQuery).Scan(&legacy); err != nil {
 		return fmt.Errorf("inspect legacy migration table: %w", err)
 	}
 	if !legacy {
