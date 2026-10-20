@@ -27,6 +27,26 @@ var schemaNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 var ErrLegacySchema = errors.New("legacy TelDrive schema detected")
 
+// LegacySchemaQuery tolerates a recreated public Goose marker only when the
+// original application schema is positively identified as v2. Incomplete or
+// mixed schemas still require the legacy migration guard.
+const LegacySchemaQuery = `SELECT
+    to_regclass('public.goose_db_version') IS NOT NULL
+    AND NOT (
+        to_regclass('teldrive.migrations') IS NOT NULL
+        AND to_regclass('teldrive.file_parts') IS NOT NULL
+        AND EXISTS (
+            SELECT 1 FROM pg_attribute
+            WHERE attrelid = to_regclass('teldrive.files')
+              AND attname = 'kind' AND attnum > 0 AND NOT attisdropped
+        )
+        AND NOT EXISTS (
+            SELECT 1 FROM pg_attribute
+            WHERE attrelid = to_regclass('teldrive.files')
+              AND attname IN ('type', 'parts') AND attnum > 0 AND NOT attisdropped
+        )
+    )`
+
 // Config controls the PostgreSQL connection pool used by TelDrive.
 type Config struct {
 	URL                 string        `koanf:"url" default:"" validate:"required" description:"PostgreSQL connection URL"`
@@ -179,7 +199,7 @@ func Migrate(ctx context.Context, cfg Config) error {
 
 func hasLegacySchema(ctx context.Context, db *sql.DB) (bool, error) {
 	var legacy bool
-	if err := db.QueryRowContext(ctx, `SELECT to_regclass('public.goose_db_version') IS NOT NULL`).Scan(&legacy); err != nil {
+	if err := db.QueryRowContext(ctx, LegacySchemaQuery).Scan(&legacy); err != nil {
 		return false, err
 	}
 	return legacy, nil
