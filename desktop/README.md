@@ -2,6 +2,15 @@
 
 Aplicación para Windows 10/11 de 64 bits, construida con .NET 10, WPF y WebView2. El paquete incluye el servidor Teldrive, el rclone compatible con la API v2, PostgreSQL, FFmpeg/FFprobe y los instaladores oficiales de WinFsp, WebView2 y Visual C++. El primer inicio presenta la configuración del servidor y abre la UI en la propia ventana.
 
+## Conexión con bases ya migradas (2.0.0.12)
+
+Corrige la detección de una base v2 cuando reaparece la tabla de control
+`public.goose_db_version`. La presencia de ese marcador por sí sola ya no provoca
+que se intente migrar otra vez un esquema identificado como v2. Se respeta
+`database.auto-migrate-legacy = false`, sin cambiar claves ni configuraciones.
+Las bases realmente antiguas, incompletas o mixtas conservan la protección de
+migración. Esta corrección no añade migraciones de datos.
+
 ## Reapertura desde la bandeja (2.0.0.11)
 
 Corrige el error de WPF al volver a mostrar una ventana maximizada después de
