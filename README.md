@@ -2,6 +2,11 @@
 
 # Teldrive
 
+The historical Windows 1.8.3 edition is preserved in
+[`windows-edition/`](windows-edition/README.md), with its original build instructions
+and licenses. The repository root contains the current v2 edition; the archived
+v1 sources are maintained separately.
+
 Telegram-backed file storage with a web interface, an HTTP API, and rclone integration.
 
 ## Install
