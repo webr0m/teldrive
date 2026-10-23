@@ -1,4 +1,4 @@
-> **Teldrive v2.0.0-drive-es.12:** Corrección de conexión con bases ya migradas. [Descargar](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.12) · [GitLab](https://gitlab.com/ridrogo/teldrive/-/releases/v2.0.0-drive-es.12).
+> **Teldrive v2.0.0-drive-es.13:** Optional central server connection through TOML. [Download](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.13).
 
 # Teldrive
 

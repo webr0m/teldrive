@@ -7,7 +7,7 @@
       <ScrollViewer x:Name="SetupView" VerticalScrollBarVisibility="Auto"><StackPanel MaxWidth="780" Margin="32">
         <TextBlock Text="{local:Localize Text=&#x27;Tu unidad, en tu equipo&#x27;}" FontSize="30" FontWeight="SemiBold" Margin="0,0,0,8"/>
         <TextBlock Text="{local:Localize Text=&#x27;Configura el servidor local y abre tu cuenta de Telegram desde esta ventana. Teldrive, rclone, PostgreSQL y multimedia están integrados.&#x27;}" Foreground="#687489" Margin="0,0,0,24"/>
-        <Border Background="White" CornerRadius="16" Padding="24" Margin="0,0,0,20"><StackPanel>
+        <Border x:Name="LocalServerSetup" Background="White" CornerRadius="16" Padding="24" Margin="0,0,0,20"><StackPanel>
           <TextBlock Text="{local:Localize Text=&#x27;Primer inicio&#x27;}" FontSize="19" FontWeight="SemiBold" Margin="0,0,0,12"/>
           <TextBlock Text="{local:Localize Text=&#x27;Base de datos&#x27;}" FontWeight="SemiBold"/><CheckBox x:Name="LocalDatabase" Content="{local:Localize Text=&#x27;Usar PostgreSQL integrado en este equipo&#x27;}" IsChecked="True" Margin="0,12,0,12" MinHeight="44"/><TextBlock Text="URL de PostgreSQL externo (opcional)"/><TextBox x:Name="DatabaseUrl" ToolTip="{local:Localize Text=&#x27;postgres://usuario:contraseña@servidor/base&#x27;}"/>
           <TextBlock Text="{local:Localize Text=&#x27;Puerto local de la UI&#x27;}"/><TextBox x:Name="HttpPort" Text="8080"/>

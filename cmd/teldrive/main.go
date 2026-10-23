@@ -92,6 +92,18 @@ func newCheckCommand() *cobra.Command {
 		Short: "Validate configuration and initialize dependencies",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if desktopInfo {
+				path, _ := cmd.Flags().GetString("config")
+				serverURL, err := desktopServerURL(path)
+				if err != nil {
+					return err
+				}
+				if serverURL != "" {
+					return json.NewEncoder(cmd.OutOrStdout()).Encode(struct {
+						ServerURL string `json:"serverUrl"`
+					}{ServerURL: serverURL})
+				}
+			}
 			cfg, err := loader.Load(cmd.Flags())
 			if err != nil {
 				return err
@@ -129,7 +141,7 @@ func newCheckCommand() *cobra.Command {
 	}
 	loader.RegisterFlags(cmd.Flags())
 	cmd.Flags().BoolVar(&validateOnly, "validate-only", false, "Validate configuration without initializing services or migrating the database")
-	cmd.Flags().BoolVar(&desktopInfo, "desktop-info", false, "Validate configuration and print the HTTP listen address as JSON without secrets or service initialization")
+	cmd.Flags().BoolVar(&desktopInfo, "desktop-info", false, "Validate Desktop configuration and print its local or remote endpoint as JSON without secrets or service initialization")
 	return cmd
 }
 

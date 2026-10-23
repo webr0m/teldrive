@@ -113,6 +113,14 @@ El inicio con Windows es opcional y se registra para el usuario actual, sin priv
 
 `rclone-automation.json` y `desktop-preferences.json` quedan en la carpeta de datos privada junto a la configuración. Los horarios y tareas no guardan la contraseña de rclone; una configuración cifrada necesita desbloquearse cada sesión antes de continuar la cola. Las tareas interrumpidas al cerrar se conservan y requieren reintento; las pendientes permanecen en la cola. El icono de la aplicación y de la bandeja utiliza el avión proporcionado por el usuario, con fondo PNG transparente.
 
+## Servidor central por TOML (2.0.0.13)
+
+Puedes conservar el modo local o conectar Desktop al servidor Node/Go existente
+con `[desktop]` y `server-url = "https://cloud.webrom.lat"` en `config.toml`.
+No necesitas copiar las claves de Supabase ni ejecutar otro servidor en el PC.
+Los TOML anteriores conservan su comportamiento. Consulta [conexión remota](REMOTE.md)
+para instalación, permisos, compatibilidad y regreso al modo local.
+
 ## Modo portátil
 
 Ejecuta `"Teldrive Desktop v2.exe" --portable` o crea un archivo vacío `Teldrive.portable` junto al ejecutable. La configuración, PostgreSQL, cachés y componentes se guardan en `TeldriveData` al lado del programa. Puedes mover juntos el ejecutable y esa carpeta con el programa cerrado. Usa una ubicación NTFS con permiso de escritura; el programa aplica permisos privados a los datos. El controlador WinFsp y los componentes de Microsoft se instalan en Windows y permanecen en ese equipo.
