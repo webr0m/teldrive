@@ -1,0 +1,4 @@
+# Client configuration: the server keeps its own database and encryption keys.
+# Save as TeldriveData/config.toml in portable mode, or use Desktop's TOML editor.
+[desktop]
+server-url = "https://cloud.webrom.lat"

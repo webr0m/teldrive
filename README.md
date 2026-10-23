@@ -1,6 +1,11 @@
-> **Teldrive v2.0.0-drive-es.12:** Corrección de conexión con bases ya migradas. [Descargar](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.12) · [GitLab](https://gitlab.com/ridrogo/teldrive/-/releases/v2.0.0-drive-es.12).
+> **Teldrive v2.0.0-drive-es.13:** Optional central server connection through TOML. [Download](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.13).
 
 # Teldrive
+
+The packaged v2 sources, including the compatible rclone and native clients, are
+also preserved in [`v2/`](v2/README.md). See that directory for package-specific
+build instructions and validation limits. The repository root contains the current
+v2 application.
 
 The historical Windows 1.8.3 edition is preserved in
 [`windows-edition/`](windows-edition/README.md), with its original build instructions
