@@ -7,7 +7,7 @@ To use the central server, save this in Desktop's `config.toml`:
 
 ```toml
 [desktop]
-server-url = "https://cloud.webrom.lat"
+server-url = "https://servidor.midominio.com"
 ```
 
 The file lives in `%LOCALAPPDATA%\TeldriveV2\config.toml`, or `TeldriveData\config.toml`

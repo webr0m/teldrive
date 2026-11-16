@@ -221,6 +221,7 @@ func New(ctx context.Context, cfg config.Config, dependencies Dependencies) (*Ap
 		ConfigureJobs(jobRuntime)
 	handler.Media = media.New(cfg.Media)
 	handler.Casting = casting.New()
+	handler.PublicURL = publicURL
 	httpServer, err := api.NewServer(handler, api.NewSecurity(authenticator, eventService).WithPublicFileContent(cfg.Security.PublicFileContent))
 	if err != nil {
 		return nil, fmt.Errorf("create generated HTTP server: %w", err)

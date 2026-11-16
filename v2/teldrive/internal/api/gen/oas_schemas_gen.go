@@ -14849,6 +14849,8 @@ type UserProfile struct {
 	Role         UserRole  `json:"role"`
 	Capabilities []string  `json:"capabilities"`
 	CreatedAt    time.Time `json:"createdAt"`
+	// Absolute origin clients should use when they build links for other people.
+	PublicUrl OptURI `json:"publicUrl"`
 }
 
 // GetUserId returns the value of UserId.
@@ -14886,6 +14888,11 @@ func (s *UserProfile) GetCreatedAt() time.Time {
 	return s.CreatedAt
 }
 
+// GetPublicUrl returns the value of PublicUrl.
+func (s *UserProfile) GetPublicUrl() OptURI {
+	return s.PublicUrl
+}
+
 // SetUserId sets the value of UserId.
 func (s *UserProfile) SetUserId(val int64) {
 	s.UserId = val
@@ -14919,6 +14926,11 @@ func (s *UserProfile) SetCapabilities(val []string) {
 // SetCreatedAt sets the value of CreatedAt.
 func (s *UserProfile) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
+}
+
+// SetPublicUrl sets the value of PublicUrl.
+func (s *UserProfile) SetPublicUrl(val OptURI) {
+	s.PublicUrl = val
 }
 
 func (*UserProfile) getCurrentUserRes() {}

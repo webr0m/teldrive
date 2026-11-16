@@ -1,4 +1,4 @@
-> **Teldrive v2.0.0-drive-es.13:** Optional central server connection through TOML. [Download](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.13).
+> **Teldrive v2.0.0-drive-es.14:** Shared links follow the server public address. [Download](https://github.com/webr0m/teldrive/releases/tag/v2.0.0-drive-es.14).
 
 # Teldrive
 

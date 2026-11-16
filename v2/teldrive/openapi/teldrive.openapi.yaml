@@ -7520,6 +7520,11 @@ components:
         createdAt:
           type: string
           format: date-time
+        publicUrl:
+          type: string
+          format: uri
+          description: Absolute origin clients should use when they build links for other
+            people.
     NameConflictPolicy:
       type: string
       enum:

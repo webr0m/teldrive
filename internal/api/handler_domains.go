@@ -128,6 +128,9 @@ func (h *Handler) GetCurrentUser(ctx context.Context) (gen.GetCurrentUserRes, er
 		return nil, mapServiceError(err)
 	}
 	response := userProfile(user)
+	if h.PublicURL.Host != "" {
+		response.PublicUrl = gen.NewOptURI(h.PublicURL)
+	}
 	return &response, nil
 }
 

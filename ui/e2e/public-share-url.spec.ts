@@ -29,3 +29,24 @@ for (const publicUrl of ["https://drive.example.com/share/fixture-token", "/shar
     await expect(page.getByRole("dialog").locator("input[readonly]")).toHaveValue(expectedUrl);
   });
 }
+
+test("download links use the public origin reported by the server", async ({ page }) => {
+  await installFileApi(page);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (value: string) => { (window as typeof window & { copiedText?: string }).copiedText = value; } },
+    });
+  });
+  await page.route(/\/api\/v1\/me$/, async (route) => route.fulfill({ json: {
+    userId: 1, displayName: "Fixture User", username: "fixture", premium: true, role: "owner",
+    capabilities: ["files.read", "files.write", "files.share"], createdAt: "2026-10-12T12:00:00Z",
+    publicUrl: "https://tel.example.org",
+  } }));
+  await page.goto("/files");
+  await page.getByRole("row", { name: /alpha\.txt/ }).click();
+  await page.getByRole("button", { name: "Copiar enlace de descarga del archivo seleccionado" }).click();
+  await expect
+    .poll(() => page.evaluate(() => (window as typeof window & { copiedText?: string }).copiedText))
+    .toBe(`https://tel.example.org/api/v1/files/${alphaId}/content/alpha.txt?download=1`);
+});

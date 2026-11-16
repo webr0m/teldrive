@@ -1,38 +1,35 @@
-# Teldrive v2.0.0-drive-es.13
+# Teldrive v2.0.0-drive-es.14
 
-Desktop can now connect to an existing central Go or Node server using its TOML:
+Links that the web interface copies for other people now use the public origin
+configured on the server instead of the address in the browser bar. Servers
+behind a reverse proxy keep reporting the reachable domain:
 
 ```toml
-[desktop]
-server-url = "https://cloud.webrom.lat"
+[http]
+address = "127.0.0.1:8086"
+public-url = "https://tel.example.com"
 ```
 
-Existing local TOML files keep working. Remote mode does not start PostgreSQL,
-the Go server, migrations or workers on the PC. Closing Desktop disconnects the
-client and leaves the central server running. The client needs no Supabase
-credentials or installation encryption keys. Login and account permissions are
-still enforced by the selected server.
+`GET /api/v1/me` returns that value as `publicUrl` only when it is configured,
+so installations that leave it empty keep building links from their own origin
+and nothing changes for them. Right-click -> Herramientas -> "Copiar enlace de
+descarga" and the selection toolbar now resolve that origin, which fixes links
+that only reached a private LAN address such as `http://192.168.1.50:8086`.
+"Crear enlace" share links were already absolute and behave as before.
 
-Install the Windows package in a new folder. For portable remote use, create
-`Teldrive.portable` next to the executable and save the TOML above as
-`TeldriveData/config.toml`. Existing installations can use the advanced TOML
-editor; back up their complete local configuration before replacing it. The
-separate `desktop/REMOTE.md` in the sources documents switching modes and API
-compatibility. Keep a server-generated API key for each rclone connection;
-Go and Node sessions/API keys are separate.
+The settings information screen shows which public address the server is
+advertising, so operators can confirm the configuration without reading logs.
 
-Remote servers must use HTTPS, except for loopback development. URLs containing
-credentials, non-root paths, queries or fragments are rejected. Readiness checks
-do not follow redirects; browser navigation and native messages remain pinned to
-the configured origin. Native integrations retain the existing owner-role check.
+Download links still require a logged-in session at that address. For access
+without an account, keep using "Crear enlace público", which returns a token
+link handled by the share endpoints.
 
-The web interface and supported operations come from the selected server. Node
-shares the v2 catalog but does not implement every Go capability, including
-River jobs. This release does not migrate or replace either server. Performance
-depends on the server, network path and media conversion; no comparative transfer
-speed claim is made.
+The Desktop remote documentation and the remote TOML example no longer point at
+the retired hosting domain; they now use a neutral placeholder server address.
+Remote mode requirements are unchanged: HTTPS origin, no credentials, path,
+query or fragment.
 
-Windows Desktop version: 2.0.0.13. The compatible rclone and mobile applications
+Windows Desktop version: 2.0.0.14. The compatible rclone and mobile applications
 are unchanged. See VALIDACION.json for executed checks and platform limitations.
 
 Exact source revisions: `source-revisions.json`.

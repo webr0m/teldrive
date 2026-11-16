@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"net/url"
 
 	"github.com/tgdrive/teldrive/v2/internal/api/gen"
 	"github.com/tgdrive/teldrive/v2/internal/authn"
@@ -40,6 +41,7 @@ type Handler struct {
 	Shares                     *shares.Service
 	TelegramAccount            telegramstore.Account
 	ActiveEncryptionKeyVersion int32
+	PublicURL                  url.URL
 }
 
 func NewHandler(catalogService *catalog.Service, uploadService *uploads.Service, uploadPipeline *transfer.Pipeline, downloader *transfer.Downloader, healthService *health.Service, activeEncryptionKeyVersion int32, eventService *events.Service) *Handler {

@@ -604,8 +604,9 @@ export function FileManagerPage({
 
   const copyDownloadLinks = async (pane: PaneId) => {
     const selectedFiles = paneSelectedFiles(pane);
+    const base = currentUser?.publicUrl ?? window.location.origin;
     try {
-      await copyText(selectedFiles.map(absoluteFileDownloadUrl).join("\n"));
+      await copyText(selectedFiles.map((file) => absoluteFileDownloadUrl(file, base)).join("\n"));
       toast.success(
         t(selectedFiles.length === 1 ? "manager.linksCopiedOne" : "manager.linksCopiedMany", {
           count: selectedFiles.length,

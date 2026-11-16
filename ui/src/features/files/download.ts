@@ -36,6 +36,9 @@ export async function copyText(value: string) {
   if (!copied) throw new Error(t("El portapapeles no está disponible"));
 }
 
-export function absoluteFileDownloadUrl(file: Pick<FileEntry, "id" | "name">) {
-  return new URL(fileContentUrl(file, true), window.location.origin).toString();
+export function absoluteFileDownloadUrl(
+  file: Pick<FileEntry, "id" | "name">,
+  base = window.location.origin,
+) {
+  return new URL(fileContentUrl(file, true), base).toString();
 }

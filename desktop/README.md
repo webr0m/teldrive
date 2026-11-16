@@ -116,7 +116,7 @@ El inicio con Windows es opcional y se registra para el usuario actual, sin priv
 ## Servidor central por TOML (2.0.0.13)
 
 Puedes conservar el modo local o conectar Desktop al servidor Node/Go existente
-con `[desktop]` y `server-url = "https://cloud.webrom.lat"` en `config.toml`.
+con `[desktop]` y `server-url = "https://servidor.midominio.com"` en `config.toml`.
 No necesitas copiar las claves de Supabase ni ejecutar otro servidor en el PC.
 Los TOML anteriores conservan su comportamiento. Consulta [conexión remota](REMOTE.md)
 para instalación, permisos, compatibilidad y regreso al modo local.

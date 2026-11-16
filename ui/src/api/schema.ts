@@ -2032,6 +2032,11 @@ export interface components {
             capabilities: string[];
             /** Format: date-time */
             createdAt: string;
+            /**
+             * Format: uri
+             * @description Absolute origin clients should use when they build links for other people.
+             */
+            publicUrl?: string;
         };
         /** @enum {string} */
         NameConflictPolicy: "fail" | "replace" | "rename";

@@ -122,6 +122,9 @@ model UserProfile {
   role: UserRole;
   capabilities: string[];
   createdAt: utcDateTime;
+
+  /** Absolute origin clients should use when they build links for other people. */
+  publicUrl?: url;
 }
 
 enum ThemePreference {
