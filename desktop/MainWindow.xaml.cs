@@ -59,6 +59,7 @@ public partial class MainWindow : Window
             }
             if (args.Contains("--smoke-window-reopen")) { await VerifyWindowReopenAsync(); exitRequested = true; Close(); return; }
             await runtime.PrepareAsync();
+            if (args.Contains("--smoke-remote")) { await VerifyRemoteConnectionAsync(); exitRequested = true; Close(); return; }
             if (args.Contains("--smoke-input")) {
                 var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0); listener.Start(); var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port; listener.Stop();
                 await runtime.ConfigureAsync(port, true, "", ""); await VerifyFolderInputAsync(); await runtime.StopAsync(); Close(); return;
@@ -156,6 +157,7 @@ public partial class MainWindow : Window
     {
         if (File.Exists(runtime.ConfigPath)) ConfigEditor.Text = File.ReadAllText(runtime.ConfigPath);
         if (runtime.State is not null) { HttpPort.Text = runtime.State.HttpPort.ToString(); LocalDatabase.IsChecked = runtime.State.LocalDatabase; DatabaseUrl.Text = runtime.State.DatabaseUrl; AllowedUser.Text = runtime.State.AllowedUser; }
+        LocalServerSetup.IsEnabled = !runtime.Remote;
     }
     private async Task InitializeBrowser()
     {
@@ -175,7 +177,7 @@ public partial class MainWindow : Window
         if (Browser.CoreWebView2 is null) throw new IOException(L.T("No se pudo inicializar WebView2."));
         Browser.CoreWebView2.Settings.IsStatusBarEnabled = false;
         Browser.CoreWebView2.Settings.AreDevToolsEnabled = false;
-        await Browser.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"if (location.protocol === 'http:' && location.hostname === '127.0.0.1' && !localStorage.getItem('teldrive-language')) localStorage.setItem('teldrive-language', {JsonSerializer.Serialize(preferences.Language)});");
+        await Browser.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($"if (location.origin === {JsonSerializer.Serialize(runtime.ServerUri?.GetLeftPart(UriPartial.Authority))} && !localStorage.getItem('teldrive-language')) localStorage.setItem('teldrive-language', {JsonSerializer.Serialize(preferences.Language)});");
         Browser.CoreWebView2.ContainsFullScreenElementChanged += (_, _) => {
             var active=Browser.CoreWebView2.ContainsFullScreenElement;
             browserFullscreen.Set(active);
@@ -199,7 +201,7 @@ public partial class MainWindow : Window
         await InitializeBrowser();
         SetupView.Visibility = Visibility.Collapsed; LogsView.Visibility = Visibility.Collapsed; Browser.Visibility = Visibility.Visible;
         Browser.Source = new Uri(runtime.ServerUri!, path);
-        Status.Text = L.T("Conectado \u00B7 {0} \u00B7 Datos guardados en tu equipo", runtime.ServerUri);
+        Status.Text = runtime.Remote ? L.T("Conectado · {0} · Servidor remoto", runtime.ServerUri) : L.T("Conectado \u00B7 {0} \u00B7 Datos guardados en tu equipo", runtime.ServerUri);
     }
     private async void StartClick(object sender, RoutedEventArgs e) => await Guard(async () => { await runtime.StartAsync(); await ShowDrive(); });
     private async void StopClick(object sender, RoutedEventArgs e) => await Guard(async () => { if (automation is not null) automation.ConfigureQueue(true, automation.State.ParallelJobs); await StopPlayersAsync(); await rclone.StopAllAsync(); await runtime.StopAsync(); AdvancedView.Visibility = Visibility.Collapsed; Browser.Visibility = Visibility.Collapsed; SetupView.Visibility = Visibility.Visible; Status.Text = L.T("Servicios detenidos; cola pausada"); });
@@ -365,7 +367,7 @@ public partial class MainWindow : Window
     private async Task RequireOwnerAsync()
     {
         var cookies = await Browser.CoreWebView2.CookieManager.GetCookiesAsync(runtime.ServerUri!.AbsoluteUri);
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(10) };
         using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(runtime.ServerUri, "/api/v1/me"));
         request.Headers.TryAddWithoutValidation(L.T("Cookie"), string.Join("; ", cookies.Select(cookie => cookie.Name + "=" + cookie.Value)));
         using var response = await http.SendAsync(request);

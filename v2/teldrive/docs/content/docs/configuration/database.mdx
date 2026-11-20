@@ -1,0 +1,149 @@
+---
+title: Database
+description: Configure PostgreSQL schema, pooling, migrations, and connectivity.
+---
+
+## PgDog
+
+You can place [PgDog](https://docs.pgdog.dev/) between Teldrive and PostgreSQL to manage database connections. It is optional; direct PostgreSQL connections remain the simplest setup.
+
+This setup uses transaction pooling, passthrough authentication, and pub/sub. PgDog is not covered by Teldrive integration tests; validate the complete setup before using it in production.
+
+### 1. Prepare PostgreSQL and the network
+
+Create the PostgreSQL database and login role first, using the [production deployment guide](/deployment/production). The example below assumes both are named `teldrive`. The role must have permission to run Teldrive's startup migrations in the configured schema.
+
+Keep PostgreSQL and PgDog on a private network. Allow Teldrive to reach PgDog on port `6432`, and PgDog to reach PostgreSQL on port `5432`. Do not expose either port publicly.
+
+### 2. Create `pgdog.toml`
+
+Save this as `pgdog.toml` on the host or inside the container running PgDog:
+
+```toml
+[general]
+host = "0.0.0.0"
+port = 6432
+default_pool_size = 10
+pooler_mode = "transaction"
+passthrough_auth = "enabled_plain"
+pub_sub_channel_size = 4096
+
+# Provision these files before starting PgDog.
+tls_certificate = "/etc/pgdog/server.crt"
+tls_private_key = "/etc/pgdog/server.key"
+tls_client_required = true
+
+[[databases]]
+name = "teldrive"
+host = "postgres"
+port = 5432
+database_name = "teldrive"
+role = "primary"
+```
+
+Replace `postgres` with the PostgreSQL hostname reachable **from PgDog**. `name` is the database name clients request from PgDog; `database_name` is the actual PostgreSQL database. These are unrelated to Teldrive's `database.schema` setting.
+
+Passthrough authentication uses the client's PostgreSQL username/password to create pools automatically, so this example does not need a static user entry in `users.toml`. `enabled_plain` requests password authentication; TLS protects that password in transit. Provide a certificate and private key readable by the PgDog process, mounting them into the container if applicable. The TLS settings above protect **Teldrive → PgDog**; configure **PgDog → PostgreSQL** TLS separately for your network using the [PgDog general configuration reference](https://docs.pgdog.dev/configuration/pgdog.toml/general/).
+
+`pub_sub_channel_size` enables PgDog's pub/sub support. Teldrive and River/RiverPro use `LISTEN`/`NOTIFY`, so do not omit this setting when testing transaction pooling.
+
+`default_pool_size = 10` is a starting point, not a global connection limit: pools are created per user/database. Budget the total against PostgreSQL capacity and leave room for administration and notification connections. Route Teldrive to the primary; do not enable sharding or read-replica routing without testing.
+
+### 3. Start PgDog
+
+With the PgDog binary installed, start it with the configuration path explicitly:
+
+```bash
+pgdog --config /etc/pgdog/pgdog.toml
+```
+
+Use the actual path where you saved the file. For a container deployment, mount the TOML file and TLS files at the paths used above, and pass the same `--config` argument to its PgDog process. Confirm PgDog can resolve and connect to PostgreSQL before starting Teldrive.
+
+### 4. Point Teldrive at PgDog
+
+Set the database URL in Teldrive's environment:
+
+```bash
+export TELDRIVE_DATABASE_URL='postgres://teldrive:URL_ENCODED_PASSWORD@pgdog:6432/teldrive?sslmode=require'
+```
+
+Replace `pgdog` with the hostname reachable **from Teldrive**, and URL-encode special characters in the PostgreSQL password. The URL's database name must match `[[databases]].name`.
+
+`sslmode=require` requires encryption but does not establish hostname verification by itself. Prefer `sslmode=verify-full` with a trusted CA and a certificate matching the PgDog hostname. For local development **only**, you can omit the three client TLS settings and use `sslmode=disable`; never do this across an untrusted network with `enabled_plain`.
+
+### 5. Validate before production
+
+Using the same configuration and environment as your service:
+
+```bash
+teldrive check
+teldrive run
+```
+
+- Confirm startup migrations succeed through PgDog.
+- Upload and download a file, then verify background tasks complete.
+- Verify live events update the UI and periodic jobs fire; successful connections alone do not validate pub/sub.
+- If running multiple replicas, test concurrent startup and budget their client pools together.
+
+If authentication fails, check the PostgreSQL credentials and authentication rules. If TLS fails, check certificate paths and hostname trust. If live events or background jobs stall, check PgDog pub/sub and transaction-pooling behavior; use a direct PostgreSQL connection while investigating.
+
+## Configuration
+
+```yaml
+database:
+  schema: teldrive
+  url: postgres://teldrive:password@127.0.0.1:5432/teldrive?sslmode=disable
+  application-name: teldrive-v2
+  auto-migrate-legacy: true
+```
+
+`database.url` is required.
+
+## Schema
+
+Default: `teldrive`.
+
+Teldrive uses the configured schema for application and River/RiverPro tables. Use a different valid PostgreSQL identifier only when you intentionally need another schema.
+
+## Migrations
+
+Teldrive runs its application, River, and RiverPro migrations during initialization. Do not run migration SQL manually.
+
+`auto-migrate-legacy: true` enables automatic v1 detection/migration. See [Migrate from Teldrive v1](/deployment/v1-migration).
+
+## Pool
+
+| Setting | Default |
+| --- | ---: |
+| `max-connections` | `25` |
+| `min-connections` | `2` |
+| `max-connection-idle` | `5m` |
+| `max-connection-life` | `30m` |
+| `health-check-interval` | `30s` |
+| `connect-timeout` | `10s` |
+
+For multiple Teldrive processes, budget the sum of all process pools against PostgreSQL's connection limit.
+
+## TLS
+
+`sslmode=disable` is suitable only for trusted local/private networking. Use the TLS settings required by your remote/managed PostgreSQL provider.
+
+## Backup
+
+Use [Backup and restore](/deployment/backup-and-restore). PostgreSQL backups and `security.data-key` are both required for full recovery.
+
+## Connection failures
+
+Check:
+
+- hostname/port from Teldrive's network namespace;
+- database, user, password, and URL escaping;
+- TLS mode;
+- firewall/container network;
+- PostgreSQL readiness and connection limits.
+
+Validate with:
+
+```bash
+teldrive check
+```

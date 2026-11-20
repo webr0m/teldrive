@@ -36490,9 +36490,15 @@ func (s *UserProfile) encodeFields(e *jx.Encoder) {
 		e.FieldStart("createdAt")
 		json.EncodeDateTime(e, s.CreatedAt)
 	}
+	{
+		if s.PublicUrl.Set {
+			e.FieldStart("publicUrl")
+			s.PublicUrl.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfUserProfile = [7]string{
+var jsonFieldsNameOfUserProfile = [8]string{
 	0: "userId",
 	1: "displayName",
 	2: "username",
@@ -36500,6 +36506,7 @@ var jsonFieldsNameOfUserProfile = [7]string{
 	4: "role",
 	5: "capabilities",
 	6: "createdAt",
+	7: "publicUrl",
 }
 
 // Decode decodes UserProfile from json.
@@ -36596,6 +36603,16 @@ func (s *UserProfile) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"createdAt\"")
+			}
+		case "publicUrl":
+			if err := func() error {
+				s.PublicUrl.Reset()
+				if err := s.PublicUrl.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"publicUrl\"")
 			}
 		default:
 			return d.Skip()

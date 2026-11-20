@@ -12,7 +12,7 @@ using System.Text.Json;
 
 namespace Teldrive.Desktop;
 
-public sealed record DesktopState(int HttpPort, bool LocalDatabase, string DatabaseUrl, int DatabasePort, string DatabasePassword, string AllowedUser = "", string HttpHost = "127.0.0.1");
+public sealed record DesktopState(int HttpPort, bool LocalDatabase, string DatabaseUrl, int DatabasePort, string DatabasePassword, string AllowedUser = "", string HttpHost = "127.0.0.1", string RemoteServerUrl = "");
 
 public sealed class RuntimeSession : IAsyncDisposable
 {
@@ -20,11 +20,13 @@ public sealed class RuntimeSession : IAsyncDisposable
     public string Components { get; private set; } = "";
     public string ConfigPath => Path.Combine(DataRoot, "config.toml");
     public DesktopState? State { get; private set; }
-    public Uri? ServerUri => State is null ? null : new UriBuilder("http", State.HttpHost, State.HttpPort).Uri;
-    public bool Running => server is { HasExited: false };
+    public bool Remote => !string.IsNullOrEmpty(State?.RemoteServerUrl);
+    public Uri? ServerUri => Remote ? new Uri(State!.RemoteServerUrl) : State is null ? null : new UriBuilder("http", State.HttpHost, State.HttpPort).Uri;
+    public bool Running => remoteConnected || server is { HasExited: false };
     public event Action<string>? Activity;
     private Process? server;
     private Process? postgres;
+    private bool remoteConnected;
     private readonly SemaphoreSlim operations = new(1, 1);
     private readonly List<Process> rcloneJobs = [];
     private readonly object logLock = new();
@@ -66,6 +68,7 @@ public sealed class RuntimeSession : IAsyncDisposable
             if (!File.Exists(Path.Combine(pgRoot, "share", "postgres.bki"))) ZipFile.ExtractToDirectory(Path.Combine(Components, "postgres.zip"), pgRoot, true);
         });
         Log(L.T("Componentes preparados: Teldrive v2, rclone, PostgreSQL, FFmpeg y WinFsp."));
+        if (File.Exists(ConfigPath)) await ReadHttpPortAsync(ConfigPath);
     }
 
     public async Task ConfigureAsync(int port, bool local, string databaseUrl, string username)
@@ -75,8 +78,8 @@ public sealed class RuntimeSession : IAsyncDisposable
         username = username.Trim().TrimStart('@');
         if (username.Length > 0 && !System.Text.RegularExpressions.Regex.IsMatch(username, @"^[A-Za-z0-9_]{5,32}$")) throw new ArgumentException(L.T("Revisa el nombre de usuario de Telegram."));
         await StopAsync();
-        var dbPort = State?.DatabasePort ?? FreePort();
-        var dbPassword = State?.DatabasePassword ?? Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+        var dbPort = State is { DatabasePort: > 0 } ? State.DatabasePort : FreePort();
+        var dbPassword = !string.IsNullOrEmpty(State?.DatabasePassword) ? State.DatabasePassword : Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
         State = new DesktopState(port, local, databaseUrl, dbPort, dbPassword, username);
         File.WriteAllText(Path.Combine(DataRoot, "desktop.json"), JsonSerializer.Serialize(State));
         var dsn = local ? LocalDsn : databaseUrl;
@@ -148,8 +151,15 @@ public sealed class RuntimeSession : IAsyncDisposable
         await operations.WaitAsync();
         try {
             if (Running) return;
-            if (State is null || !File.Exists(ConfigPath)) throw new IOException(L.T("Completa la configuración inicial."));
+            if (!File.Exists(ConfigPath)) throw new IOException(L.T("Completa la configuración inicial."));
             await ReadHttpPortAsync(ConfigPath);
+            if (Remote) {
+                await ConnectRemoteAsync();
+                remoteConnected = true;
+                Log(L.T("Conectado al servidor remoto: {0}", ServerUri));
+                return;
+            }
+            if (State is null) throw new IOException(L.T("Completa la configuración inicial."));
             if (State.LocalDatabase) await StartDatabaseAsync();
             await ValidateConfigAsync(File.ReadAllText(ConfigPath));
             server = StartService(Binary("teldrive.exe"), "run", "--config", ConfigPath);
@@ -164,6 +174,30 @@ public sealed class RuntimeSession : IAsyncDisposable
             await StopCoreAsync();
             throw;
         } finally { operations.Release(); }
+    }
+
+    private async Task ConnectRemoteAsync()
+    {
+        // Keep the configured origin pinned: never follow redirects with cookies
+        // or silently fall back to starting a local server/database.
+        using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(25) };
+        foreach (var path in new[] { "/api/health/ready", "/health/ready" }) {
+            using var response = await http.GetAsync(new Uri(ServerUri!, path));
+            if (response.StatusCode == HttpStatusCode.NotFound) continue;
+            if (!response.IsSuccessStatusCode) throw new IOException(L.T("El servidor remoto no está disponible (HTTP {0}).", (int)response.StatusCode));
+            if (response.Content.Headers.ContentLength > 65536) break;
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var buffer = new byte[65537]; var length = 0;
+            while (length < buffer.Length) { var read = await stream.ReadAsync(buffer.AsMemory(length), deadline.Token); if (read == 0) break; length += read; }
+            if (length == buffer.Length) break;
+            try {
+                using var health = JsonDocument.Parse(buffer.AsMemory(0, length));
+                if (health.RootElement.ValueKind == JsonValueKind.Object && health.RootElement.TryGetProperty("status", out var status) && status.ValueKind == JsonValueKind.String && status.GetString() == "ok") return;
+            } catch (JsonException) { }
+            break;
+        }
+        throw new IOException(L.T("La dirección no respondió como un servidor Teldrive disponible."));
     }
 
     private async Task StartDatabaseAsync()
@@ -187,7 +221,7 @@ public sealed class RuntimeSession : IAsyncDisposable
     public async Task ValidateConfigAsync(string config)
     {
         var temporary = Path.Combine(DataRoot, $"validate-{Guid.NewGuid():N}.toml");
-        try { await File.WriteAllTextAsync(temporary, config); await RunAsync(Binary("teldrive.exe"), "check", "--config", temporary, "--validate-only"); } finally { File.Delete(temporary); }
+        try { await File.WriteAllTextAsync(temporary, config); await ReadDesktopEndpointAsync(temporary); } finally { File.Delete(temporary); }
     }
     public async Task SaveConfigAsync(string config)
     {
@@ -204,10 +238,14 @@ public sealed class RuntimeSession : IAsyncDisposable
     private async Task ReadHttpPortAsync(string path)
         => await SetDesktopEndpointAsync(await ReadDesktopEndpointAsync(path));
 
-    private sealed record DesktopEndpoint(Uri Http, bool LocalDatabase);
+    private sealed record DesktopEndpoint(Uri Http, bool LocalDatabase, bool Remote = false);
     private async Task<DesktopEndpoint> ReadDesktopEndpointAsync(string path)
     {
         using var data = JsonDocument.Parse(await RunAsync(Binary("teldrive.exe"), "check", "--config", path, "--desktop-info"));
+        if (data.RootElement.TryGetProperty("serverUrl", out var remote)) {
+            if (!Uri.TryCreate(remote.GetString(), UriKind.Absolute, out var uri) || (uri.Scheme != "https" && !(uri.Scheme == "http" && uri.IsLoopback)) || uri.UserInfo.Length > 0 || uri.AbsolutePath != "/" || uri.Query.Length > 0 || uri.Fragment.Length > 0) throw new IOException(L.T("La dirección del servidor remoto no es válida."));
+            return new DesktopEndpoint(uri, false, true);
+        }
         var address = data.RootElement.GetProperty("address").GetString();
         if (!Uri.TryCreate("http://" + address, UriKind.Absolute, out var endpoint) || endpoint.Port is < 1 or > 65535 || endpoint.UserInfo.Length > 0 || endpoint.AbsolutePath != "/") throw new IOException(L.T("La dirección HTTP configurada no es válida para Desktop."));
         var localDatabase = State?.LocalDatabase ?? false;
@@ -221,7 +259,15 @@ public sealed class RuntimeSession : IAsyncDisposable
     private async Task SetDesktopEndpointAsync(DesktopEndpoint info)
     {
         var endpoint = info.Http;
-        if (State is not null && (State.HttpPort != endpoint.Port || State.HttpHost != endpoint.Host || State.LocalDatabase != info.LocalDatabase)) { State = State with {HttpPort = endpoint.Port, HttpHost = endpoint.Host, LocalDatabase = info.LocalDatabase}; await File.WriteAllTextAsync(Path.Combine(DataRoot, "desktop.json"), JsonSerializer.Serialize(State)); }
+        if (info.Remote) {
+            // Preserve the previous local settings so removing server-url can
+            // restore an existing local installation without new credentials.
+            var state = State ?? new DesktopState(8080, false, "", 0, "");
+            State = state with { RemoteServerUrl = endpoint.AbsoluteUri };
+        } else if (State is not null) {
+            State = State with { HttpPort = endpoint.Port, HttpHost = endpoint.Host, LocalDatabase = info.LocalDatabase, RemoteServerUrl = "" };
+        }
+        if (State is not null) await File.WriteAllTextAsync(Path.Combine(DataRoot, "desktop.json"), JsonSerializer.Serialize(State));
     }
 
     public async Task StopAsync()
@@ -231,10 +277,11 @@ public sealed class RuntimeSession : IAsyncDisposable
     }
     private async Task StopCoreAsync()
     {
+            var wasRemote = remoteConnected; remoteConnected = false;
             foreach (var process in rcloneJobs) { if (!process.HasExited) { process.Kill(true); await process.WaitForExitAsync(); } process.Dispose(); } rcloneJobs.Clear();
             if (server is not null) { if (!server.HasExited) { server.Kill(true); await server.WaitForExitAsync(); } server.Dispose(); server = null; }
             if (postgres is not null) { try { if (!postgres.HasExited) await RunAsync(Path.Combine(Components, "pgsql", "bin", "pg_ctl.exe"), "stop", "-D", Path.Combine(DataRoot, "database"), "-m", "fast", "-w", "-t", "20"); } finally { if (!postgres.HasExited) { postgres.Kill(true); await postgres.WaitForExitAsync(); } postgres.Dispose(); postgres = null; } }
-            Log(L.T("Servicios detenidos."));
+            Log(wasRemote ? L.T("Desconectado del servidor remoto. El servidor continúa activo.") : L.T("Servicios detenidos."));
     }
     public async Task InstallAsync(string filename, bool administrator, params string[] arguments)
     {

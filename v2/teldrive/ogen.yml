@@ -1,0 +1,7 @@
+generator:
+  features:
+    disable:
+      - "ogen/unimplemented"
+      - "paths/client"
+      - "webhooks/client"
+      - "ogen/otel"

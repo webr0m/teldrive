@@ -1,5 +1,7 @@
 import { t } from "@/lib/localization";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { currentUserQueryOptions } from "@/auth/queries";
 import { SettingsPageHeader, SettingsRow, SettingsSection } from "@/components/settings-layout";
 import { buildInfo } from "@/lib/version";
 import { isDesktop } from "@/lib/desktop";
@@ -7,6 +9,7 @@ import { isDesktop } from "@/lib/desktop";
 export const Route = createFileRoute("/_settings/settings/info")({ component: Information });
 
 function Information() {
+  const { data: user } = useQuery(currentUserQueryOptions());
   return (
     <div className="space-y-6">
       <SettingsPageHeader
@@ -30,6 +33,11 @@ function Information() {
         </SettingsRow>
         <SettingsRow label={t("Servidor conectado")}>
           <span className="break-all text-sm">{window.location.origin}</span>
+        </SettingsRow>
+        <SettingsRow label={t("Dirección pública para compartir")}>
+          <span className="break-all text-sm">
+            {user?.publicUrl ?? t("La misma dirección del servidor")}
+          </span>
         </SettingsRow>
         <SettingsRow label={t("Interfaz actual")}>
           <span className="text-sm">
